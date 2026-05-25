@@ -32,3 +32,5 @@ slides/*.pptx
 .ipynb_checkpoints/
 
 fm_grpo.egg-info/
+
+assets/
