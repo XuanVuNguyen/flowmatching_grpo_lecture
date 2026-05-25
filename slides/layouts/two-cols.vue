@@ -8,7 +8,7 @@ const speaker = $slidev?.configs?.author ?? ''
 </script>
 
 <template>
-  <div class="slidev-layout epfl-content" style="padding: 56px 60px 52px 60px;">
+  <div class="slidev-layout epfl-content" style="padding: 36px 60px 52px 60px;">
     <div class="epfl-chrome-rule" />
     <img src="/epfl/logo.svg" class="epfl-chrome-logo" alt="EPFL" />
 

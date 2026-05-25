@@ -50,21 +50,70 @@ chapter: 1
 # Foundations of Flow Matching
 
 ---
+class: compact
+---
 
-# Ordinary Differential Equations
+# Ordinary Differential Equations (ODEs)
 
-A trajectory $x(t)$ is the solution of an ODE driven by a **vector field** $v_\theta$:
+An **ODE** is an equation relating an unknown function $X : I \to \mathbb{R}^d$ to its derivatives, where $I \subseteq \mathbb{R}$ is an interval
 
+A **first-order ODE** has the form:
 $$
-\frac{d x(t)}{dt} = v_\theta\bigl(x(t),\, t\bigr), \qquad x(0) \sim p_0
+\frac{dX_t}{dt} = f(X_t,\, t), \qquad f : \mathbb{R}^d \times I \to \mathbb{R}^d
 $$
 
-- $p_0$ is a tractable noise distribution
-- $p_1$ is the data distribution we want to sample from
-- $v_\theta$ is parameterised by a neural network
+A **solution** is a differentiable function, called a **trajectory**, that maps each $t \in I$ to a location $X_t \in \mathbb{R}^d$ and satisfies the ODE:
+$$
+X : I \to \mathbb{R}^d, \qquad t \mapsto X_t
+$$
 
-This is the **default content layout** — header bar, EPFL logo, title/speaker
-in the footer and an auto page counter.
+In flow matching, we take $I = [0, 1]$ and interpret $t$ as time.
+
+<img :src="'/figures/ode_trajectory.gif'" class="mx-auto block" style="width: 70%; height: auto;" />
+
+**Example**: A water particle flowing downstream, at each time $t$, $X_t$ gives its position in the river
+
+---
+class: compact
+---
+
+# Vector Field
+
+A **vector field** is a function that, for every time $t$ and location $x$, returns a vector $u_t(x) \in \mathbb{R}^d$ specifying a velocity in space:
+$$
+u : \mathbb{R}^d \times I \to \mathbb{R}^d, \qquad (x, t) \mapsto u_t(x)
+$$
+
+Every vector field defines an **ODE**. Paired with an initial condition, it constitutes an **initial value problem (IVP)**:
+
+- The trajectory **follows the vector field**:
+$$\qquad \frac{d}{dt} X_t = u_t(X_t)$$
+- The trajectory **starts at an initial point**$:
+$$X_0 = x_0$$
+
+The vector field generates the dynamics, and the trajectory is what you get by following it
+
+<img :src="'/figures/vector_field.gif'" class="mx-auto block" style="width: 70%; height: auto;" />
+
+---
+class: compact
+---
+
+# Flow
+
+A **flow** is a function that, for every initial point $x_0$ and time $t$, returns the position at time $t$ of the trajectory starting from $x_0$:
+$$
+\Psi : \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d, \qquad (x_0, t) \mapsto \Psi_t(x_0)
+$$
+
+The flow is itself a solution of the ODE, one for every starting point:
+$$
+\frac{d}{dt} \Psi_t(x_0) = u_t(\Psi_t(x_0)), \qquad \Psi_0(x_0) = x_0
+$$
+
+While a trajectory is a single curve, the flow **tracks all trajectories at once**. For any initial condition $X_0 = x_0$, the corresponding trajectory is recovered by fixing $x_0$: $X_t = \Psi_t(x_0)$
+
+<img :src="'/figures/flow.gif'" class="mx-auto block" style="height: 280px; width: auto;" />
 
 ---
 layout: two-cols
@@ -102,6 +151,8 @@ chapter: 2
 # From GRPO to Flow Matching
 
 ---
+class: compact
+---
 
 # GRPO refresher
 
@@ -117,6 +168,8 @@ $$
 - Advantage `Â` computed from a **group** of rollouts — no critic needed
 - KL-to-reference is added as a penalty (or removed — see ablation later)
 
+---
+class: compact
 ---
 
 # Why ODE is the wrong substrate for GRPO
@@ -152,6 +205,8 @@ chapter: 3
 
 # Implementation & results
 
+---
+class: compact
 ---
 
 # Reference
