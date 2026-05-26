@@ -51,9 +51,14 @@
 /* Compact slides: opt-in via `class: compact` in frontmatter. */
 .slidev-layout.compact { font-size: 0.85rem; }
 .slidev-layout.compact h1 { font-size: 1.6rem; margin-bottom: 0.7rem; }
-.slidev-layout.compact p { line-height: 1.35; margin: 0.35em 0; }
-.slidev-layout.compact li { line-height: 1.4; margin: 0.15em 0; }
-.slidev-layout.compact .katex-display { margin: 0.45em 0; }
+.slidev-layout.compact p { line-height: 1.45; margin: 0.7em 0; }
+.slidev-layout.compact li { line-height: 1.4; margin: 0.6em 0; }
+.slidev-layout.compact .katex-display { margin: 0.55em 0; }
+
+/* Roomy: extra breathing room between paragraphs/lists on dense slides. */
+.slidev-layout.roomy p { margin: 0.9em 0; }
+.slidev-layout.roomy li { margin: 0.75em 0; }
+.slidev-layout.roomy .katex-display { margin: 0.7em 0; }
 
 .slidev-layout a {
   color: var(--epfl-text);
@@ -83,7 +88,22 @@
   background: transparent;
 }
 
-.slidev-layout ul li::marker { color: var(--epfl-text-soft); }
+.slidev-layout ul {
+  list-style: disc outside;
+  padding-left: 1.3em;
+  margin: 0.5em 0;
+}
+.slidev-layout ol {
+  list-style: decimal outside;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.slidev-layout ul li,
+.slidev-layout ol li {
+  padding-left: 0.5em;
+  margin: 0.65em 0;
+}
+.slidev-layout ul li::marker { color: var(--epfl-text-soft); font-size: 0.85em; }
 .slidev-layout ol li::marker { color: var(--epfl-text-soft); }
 
 /* Shared chrome — single thin line at top, EPFL logo, small footer */
@@ -104,6 +124,29 @@
   height: 18px;
   z-index: 6;
   opacity: 0.9;
+}
+
+/* Top-right chrome: presentation title + EPFL logo, vertically centered */
+.epfl-chrome-top {
+  position: absolute;
+  top: 24px;
+  right: 36px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 6;
+  line-height: 1;
+}
+.epfl-chrome-top .epfl-chrome-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--epfl-text-soft);
+}
+.epfl-chrome-top .epfl-chrome-logo {
+  /* override the absolute placement above when nested in the flex container */
+  position: static;
+  top: auto;
+  right: auto;
 }
 
 .epfl-chrome-footer {
@@ -281,6 +324,17 @@
 .epfl-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 .epfl-cols.cols-3 { grid-template-columns: repeat(3, 1fr); }
 
+.vf-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+  margin: 0.9em 2.0em;
+}
+.vf-row .vf-left > :first-child { margin-top: 0; }
+.vf-row .vf-left > :last-child { margin-bottom: 0; }
+.vf-row .vf-right { display: flex; justify-content: center; align-items: center; }
+
 .epfl-card {
   border-top: 1px solid var(--epfl-rule);
   padding: 12px 0 0 0;
@@ -293,6 +347,59 @@
   color: var(--epfl-text-soft);
   margin-bottom: 6px;
 }
+
+/* Definition / Theorem callouts — subtle, scannable */
+.slidev-layout .definition,
+.slidev-layout .theorem,
+.slidev-layout .example,
+.slidev-layout .note,
+.slidev-layout .terminology {
+  border-left: 3px solid var(--epfl-text-soft);
+  background: var(--epfl-bg-soft);
+  padding: 6px 14px;
+  margin: 0.9em 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.slidev-layout .theorem { border-left-color: var(--epfl-red); }
+.slidev-layout .example { border-left-color: #2ca02c; background: transparent; }
+.slidev-layout .terminology {
+  border-left-color: #1f77b4;
+  background: rgba(31, 119, 180, 0.06);
+}
+
+.slidev-layout .definition::before,
+.slidev-layout .theorem::before,
+.slidev-layout .example::before,
+.slidev-layout .terminology::before {
+  display: block;
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--epfl-text-soft);
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.slidev-layout .definition::before { content: "Definition"; }
+.slidev-layout .theorem::before { content: "Theorem"; color: var(--epfl-red); }
+.slidev-layout .example::before { content: "Example"; color: #2ca02c; }
+.slidev-layout .terminology::before { content: "Terminology"; color: #1f77b4; }
+
+.slidev-layout .definition > :first-child,
+.slidev-layout .theorem > :first-child,
+.slidev-layout .example > :first-child,
+.slidev-layout .note > :first-child,
+.slidev-layout .terminology > :first-child { margin-top: 0; }
+.slidev-layout .definition > :last-child,
+.slidev-layout .theorem > :last-child,
+.slidev-layout .example > :last-child,
+.slidev-layout .note > :last-child,
+.slidev-layout .terminology > :last-child { margin-bottom: 0; }
+
+.slidev-layout .definition .katex-display,
+.slidev-layout .theorem .katex-display,
+.slidev-layout .note .katex-display,
+.slidev-layout .terminology .katex-display { margin: 0.25em 0; }
 
 /* Tables */
 .slidev-layout table { border-collapse: collapse; }
