@@ -298,6 +298,86 @@ Use the `full-image` layout for visually dominant slides: diagrams, hero
 images, single equations.
 
 ---
+class: compact
+---
+
+# From ODE to SDE in Practice
+
+We discretise the SDE with the **Euler–Maruyama** scheme. Comparing one step of each:
+
+$$
+\underbrace{X_{t+h} = X_t + h\, u^\theta_t(X_t)}_{\text{ODE (deterministic)}}
+\qquad\longrightarrow\qquad
+\underbrace{X_{t+h} = X_t + h\, b^\theta_t(X_t) + \sigma\sqrt{h}\,\varepsilon_t}_{\text{SDE (stochastic)}}
+$$
+
+with $\varepsilon_t \sim \mathcal{N}(0, I)$ drawn **independently at every step**.
+
+- The noise scale $\sigma$ controls exploration: $\sigma \to 0$ recovers the ODE; larger $\sigma$ gives noisier, more diverse rollouts.
+- The drift $b^\theta_t$ is the **learned velocity field corrected by the score** so that the marginals $p_t$ are preserved:
+$$
+b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \tfrac{\sigma^2}{2}\, \nabla_x \log p_t(x)
+$$
+- For **rectified flow** (linear interpolant $X_t = (1-t) X_0 + t X_1$), the score can be re-expressed purely in terms of the learned $u^\theta_t$, giving the closed-form drift
+$$
+b^\theta_t(x) \;=\; -\frac{1}{t}\,\bigl(x + (1-t)\, u^\theta_t(x)\bigr)
+\qquad \text{(see appendix)}
+$$
+- Each Euler step is therefore a **Gaussian transition**:
+$$
+\pi_\theta(X_{t+h} \mid X_t) = \mathcal{N}\!\bigl(X_t + h\, b^\theta_t(X_t),\ \sigma^2 h\, I\bigr)
+$$
+
+This is exactly the policy we will optimise with GRPO: a sequence of $N$ Gaussian actions, one per integration step.
+
+---
+class: compact
+---
+
+# ODE vs SDE: where exploration comes from
+
+Same drift $u_t$, same starting point, same step size. The only thing that changes across panels is the noise scale $\sigma$ injected at each Euler step.
+
+<img :src="'/figures/ode_vs_sde.gif'" class="mx-auto block" style="height: 360px; width: auto;" />
+
+- **Top-left ($\sigma = 0$, ODE):** one trajectory — the rollout is a deterministic function of $X_0$, so a group of rollouts from the same noise would all be identical.
+- **Other panels (SDE):** four trajectories from the *same* $X_0$ diverge because each Euler step adds an independent $\sigma\sqrt{h}\,\varepsilon_t$. Increasing $\sigma$ widens the cloud — this is the exploration knob GRPO needs.
+
+The grey dashed curve in each SDE panel is the underlying ODE trajectory, kept as a visual reference so the noise contribution is easy to read off.
+
+---
+class: compact
+---
+
+# GRPO with Gaussian Policies $\Rightarrow$ Closed-Form KL
+
+Because every step's policy is Gaussian with **fixed** covariance $\sigma^2 h\, I$, only the *mean* depends on $\theta$. Write $\mu_\theta = X_t + h\, b^\theta_t(X_t)$ and $\mu_{\text{old}} = X_t + h\, b^{\text{old}}_t(X_t)$.
+
+The per-step log-ratio collapses to a difference of squared distances:
+
+$$
+\log r_t \;=\; \log\frac{\pi_\theta(X_{t+h}\mid X_t)}{\pi_{\text{old}}(X_{t+h}\mid X_t)}
+\;=\; \frac{\lVert X_{t+h} - \mu_{\text{old}} \rVert^2 \;-\; \lVert X_{t+h} - \mu_\theta \rVert^2}{2\sigma^2 h}
+$$
+
+and the KL penalty has a **closed form**:
+
+$$
+\mathrm{KL}\!\bigl(\pi_\theta(\cdot\mid X_t)\,\Vert\,\pi_{\text{old}}(\cdot\mid X_t)\bigr)
+\;=\; \frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma^2 h}
+$$
+
+The full GRPO objective summed over the $N$ Euler steps becomes:
+
+$$
+\mathcal{L}_{\text{GRPO}}
+= \mathbb{E}\Bigl[\sum_{t}\min\bigl(r_t \hat{A},\, \operatorname{clip}(r_t, 1{-}\epsilon, 1{+}\epsilon)\hat{A}\bigr)\Bigr]
+\;-\;\beta \sum_{t}\frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma^2 h}
+$$
+
+> Closed-form KL is the practical benefit of staying Gaussian: low variance, no Monte-Carlo simulation.
+
+---
 layout: section
 chapter: 3
 ---
@@ -328,6 +408,47 @@ Reusable bits in `styles/global.css`:
   <div class="epfl-card"><div class="card-title">Right</div>…</div>
 </div>
 ```
+
+---
+layout: section
+chapter: A
+---
+
+# Appendix
+
+---
+class: compact
+---
+
+# Appendix A — Rectified-flow drift $b^\theta_t$
+
+**Setup.** Linear interpolant with $X_0 \sim p_{\text{data}}$ at $t=0$ and $X_1 \sim \mathcal{N}(0, I)$ at $t=1$:
+$$
+X_t = (1-t)\, X_0 + t\, X_1,
+\qquad
+p_t(x \mid x_0) = \mathcal{N}\!\bigl((1-t)\, x_0,\ t^2 I\bigr)
+$$
+
+**Step 1 — denoiser identity.** The learned velocity satisfies $u^\theta_t(x) = \mathbb{E}[X_1 - X_0 \mid X_t = x]$. Combining with $X_t = (1-t) X_0 + t X_1$ and taking conditional expectations,
+$$
+\mathbb{E}[X_0 \mid X_t = x] \;=\; x - t\, u^\theta_t(x)
+$$
+
+**Step 2 — score via Tweedie.** For the Gaussian mixture $p_t(x) = \int \mathcal{N}(x;\, (1-t) x_0, t^2 I)\, p_{\text{data}}(x_0)\, dx_0$, Tweedie's identity gives
+$$
+\nabla_x \log p_t(x) \;=\; \frac{(1-t)\, \mathbb{E}[X_0 \mid X_t = x] - x}{t^2}
+$$
+Substituting Step 1 and simplifying the numerator $(1-t)(x - t\, u^\theta_t) - x = -t\,x - t(1-t)\, u^\theta_t$:
+$$
+\boxed{\;\nabla_x \log p_t(x) \;=\; -\frac{1}{t}\bigl(x + (1-t)\, u^\theta_t(x)\bigr)\;}
+$$
+
+**Step 3 — plug into $b^\theta_t$.** Starting from $b^\theta_t(x) = u^\theta_t(x) + \tfrac{\sigma^2}{2} \nabla_x \log p_t(x)$ and choosing the noise schedule $\sigma^2 = 2t / (1-t)$ used in the paper, the $u^\theta_t$ terms cancel and we obtain
+$$
+b^\theta_t(x) \;=\; -\frac{1}{t}\bigl(x + (1-t)\, u^\theta_t(x)\bigr).
+$$
+
+> The point of Step 2 is that the score is *exactly* re-expressible in the learned velocity — no separate score network is needed.
 
 ---
 layout: end
