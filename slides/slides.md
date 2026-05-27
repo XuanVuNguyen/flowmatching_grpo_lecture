@@ -318,10 +318,9 @@ with $\varepsilon_t \sim \mathcal{N}(0, I)$ drawn **independently at every step*
 $$
 b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \tfrac{\sigma^2}{2}\, \nabla_x \log p_t(x)
 $$
-- For **rectified flow** (linear interpolant $X_t = (1-t) X_0 + t X_1$), the score can be re-expressed purely in terms of the learned $u^\theta_t$, giving the closed-form drift
+- For **rectified flow** with linear interpolant $X_t = (1-t) X_0 + t X_1$ ($X_0 \sim \mathcal{N}(0, I)$ noise, $X_1 \sim p_{\text{data}}$), the score can be re-expressed purely in terms of $u^\theta_t$, giving the closed-form drift ([see Appendix A](/appendix-rectified-flow)):
 $$
-b^\theta_t(x) \;=\; -\frac{1}{t}\,\bigl(x + (1-t)\, u^\theta_t(x)\bigr)
-\qquad \text{(see appendix)}
+b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \frac{\sigma_t^2}{2(1-t)}\,\bigl(t\, u^\theta_t(x) - x\bigr)
 $$
 - Each Euler step is therefore a **Gaussian transition**:
 $$
@@ -360,22 +359,39 @@ $$
 \;=\; \frac{\lVert X_{t+h} - \mu_{\text{old}} \rVert^2 \;-\; \lVert X_{t+h} - \mu_\theta \rVert^2}{2\sigma^2 h}
 $$
 
-and the KL penalty has a **closed form**:
+Substituting this to the KL penalty gives the following **closed form**:
 
 $$
 \mathrm{KL}\!\bigl(\pi_\theta(\cdot\mid X_t)\,\Vert\,\pi_{\text{old}}(\cdot\mid X_t)\bigr)
-\;=\; \frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma^2 h}
+\;=\; \frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma_t^2 h}.
 $$
 
-The full GRPO objective summed over the $N$ Euler steps becomes:
+Substituting $\mu = X_t + h\, b_t$ and the rectified-flow drift $b_t = u_t + \tfrac{\sigma_t^2}{2(1-t)}(t\, u_t - x)$, the $-x$ score-correction term **cancels in the difference**:
+
+$$
+\mu_\theta - \mu_{\text{old}}
+\;=\; h\,\bigl(b^\theta_t(X_t) - b^{\text{old}}_t(X_t)\bigr)
+\;=\; h\, C_t\,\bigl(u^\theta_t(X_t) - u^{\text{old}}_t(X_t)\bigr),
+\qquad
+C_t \;\triangleq\; 1 + \frac{t\,\sigma_t^2}{2(1-t)}.
+$$
+
+So the KL collapses to a scalar-weighted squared residual of the **learned velocity** alone:
+
+$$
+\mathrm{KL}\!\bigl(\pi_\theta\,\Vert\,\pi_{\text{old}}\bigr)
+\;=\; \frac{h\, C_t^2}{2\sigma_t^2}\,\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t) \bigr\rVert^2.
+$$
+
+The full GRPO objective summed over the $N$ Euler steps then depends only on $u^\theta$ (through $\mu_\theta$ inside $r_t$ and through the residual above):
 
 $$
 \mathcal{L}_{\text{GRPO}}
 = \mathbb{E}\Bigl[\sum_{t}\min\bigl(r_t \hat{A},\, \operatorname{clip}(r_t, 1{-}\epsilon, 1{+}\epsilon)\hat{A}\bigr)\Bigr]
-\;-\;\beta \sum_{t}\frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma^2 h}
+\;-\;\beta \sum_{t}\frac{h\, C_t^2}{2\sigma_t^2}\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t)\bigr\rVert^2.
 $$
 
-> Closed-form KL is the practical benefit of staying Gaussian: low variance, no Monte-Carlo simulation.
+> Closed-form KL is the practical benefit of staying Gaussian: low variance, no Monte-Carlo simulation, and gradients flow directly into the velocity network $u^\theta_t$.
 
 ---
 layout: section
@@ -418,37 +434,43 @@ chapter: A
 
 ---
 class: compact
+routeAlias: appendix-rectified-flow
 ---
 
 # Appendix A — Rectified-flow drift $b^\theta_t$
 
-**Setup.** Linear interpolant with $X_0 \sim p_{\text{data}}$ at $t=0$ and $X_1 \sim \mathcal{N}(0, I)$ at $t=1$:
+**Recall.** The marginal-preserving SDE drift is the learned velocity *plus a score correction*:
+$$
+b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \tfrac{\sigma_t^2}{2}\, \nabla_x \log p_t(x).
+$$
+
+**Setup.** Linear interpolant with $X_0 \sim \mathcal{N}(0, I)$ (initial / noise) and $X_1 \sim p_{\text{data}}$:
 $$
 X_t = (1-t)\, X_0 + t\, X_1,
 \qquad
-p_t(x \mid x_0) = \mathcal{N}\!\bigl((1-t)\, x_0,\ t^2 I\bigr)
+p_t(x \mid x_1) = \mathcal{N}\!\bigl(t\, x_1,\ (1-t)^2 I\bigr).
 $$
 
 **Step 1 — denoiser identity.** The learned velocity satisfies $u^\theta_t(x) = \mathbb{E}[X_1 - X_0 \mid X_t = x]$. Combining with $X_t = (1-t) X_0 + t X_1$ and taking conditional expectations,
 $$
-\mathbb{E}[X_0 \mid X_t = x] \;=\; x - t\, u^\theta_t(x)
+\mathbb{E}[X_1 \mid X_t = x] \;=\; x + (1-t)\, u^\theta_t(x).
 $$
 
-**Step 2 — score via Tweedie.** For the Gaussian mixture $p_t(x) = \int \mathcal{N}(x;\, (1-t) x_0, t^2 I)\, p_{\text{data}}(x_0)\, dx_0$, Tweedie's identity gives
+**Step 2 — score via Tweedie.** For the Gaussian mixture $p_t(x) = \int \mathcal{N}(x;\, t\, x_1,\ (1-t)^2 I)\, p_{\text{data}}(x_1)\, dx_1$, Tweedie's identity gives
 $$
-\nabla_x \log p_t(x) \;=\; \frac{(1-t)\, \mathbb{E}[X_0 \mid X_t = x] - x}{t^2}
+\nabla_x \log p_t(x) \;=\; \frac{t\, \mathbb{E}[X_1 \mid X_t = x] - x}{(1-t)^2}.
 $$
-Substituting Step 1 and simplifying the numerator $(1-t)(x - t\, u^\theta_t) - x = -t\,x - t(1-t)\, u^\theta_t$:
+Substituting Step 1 and simplifying the numerator $t\,(x + (1-t)\, u^\theta_t) - x = -(1-t)\, x + t(1-t)\, u^\theta_t$:
 $$
-\boxed{\;\nabla_x \log p_t(x) \;=\; -\frac{1}{t}\bigl(x + (1-t)\, u^\theta_t(x)\bigr)\;}
-$$
-
-**Step 3 — plug into $b^\theta_t$.** Starting from $b^\theta_t(x) = u^\theta_t(x) + \tfrac{\sigma^2}{2} \nabla_x \log p_t(x)$ and choosing the noise schedule $\sigma^2 = 2t / (1-t)$ used in the paper, the $u^\theta_t$ terms cancel and we obtain
-$$
-b^\theta_t(x) \;=\; -\frac{1}{t}\bigl(x + (1-t)\, u^\theta_t(x)\bigr).
+\boxed{\;\nabla_x \log p_t(x) \;=\; \frac{t\, u^\theta_t(x) - x}{1-t}\;}.
 $$
 
-> The point of Step 2 is that the score is *exactly* re-expressible in the learned velocity — no separate score network is needed.
+**Step 3 — plug into $b^\theta_t$.** Substituting the boxed score into the Recall formula:
+$$
+b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \frac{\sigma_t^2}{2(1-t)}\bigl(t\, u^\theta_t(x) - x\bigr).
+$$
+
+> The point of Step 2 is that the score is *exactly* re-expressible in the learned velocity — no separate score network is needed; the only remaining knob is the diffusion schedule $\sigma_t$.
 
 ---
 layout: end

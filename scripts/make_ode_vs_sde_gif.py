@@ -53,10 +53,10 @@ def main() -> None:
             for k, s in enumerate(SIGMAS)]
 
     fig, axes = plt.subplots(2, 2, figsize=(8.5, 5.6), sharex=True, sharey=True)
-    fig.suptitle(
-        "ODE vs SDE: per-step Gaussian noise gives trajectory diversity",
-        fontsize=11,
-    )
+    # fig.suptitle(
+    #     "ODE vs SDE: per-step Gaussian noise gives trajectory diversity",
+    #     fontsize=11,
+    # )
 
     panels = [
         (axes[0, 0], "ODE  (σ = 0)",          ode,     "#1f77b4"),
