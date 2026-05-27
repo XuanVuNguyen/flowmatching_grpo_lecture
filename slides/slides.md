@@ -335,14 +335,14 @@ class: compact
 
 # ODE vs SDE: where exploration comes from
 
-Same drift $u_t$, same starting point, same step size. The only thing that changes across panels is the noise scale $\sigma$ injected at each Euler step.
+<!-- Same drift $u_t$, same starting point, same step size. The only thing that changes across panels is the noise scale $\sigma$ injected at each Euler step. -->
 
 <img :src="'/figures/ode_vs_sde.gif'" class="mx-auto block" style="height: 360px; width: auto;" />
 
-- **Top-left ($\sigma = 0$, ODE):** one trajectory — the rollout is a deterministic function of $X_0$, so a group of rollouts from the same noise would all be identical.
+<!-- - **Top-left ($\sigma = 0$, ODE):** one trajectory — the rollout is a deterministic function of $X_0$, so a group of rollouts from the same noise would all be identical.
 - **Other panels (SDE):** four trajectories from the *same* $X_0$ diverge because each Euler step adds an independent $\sigma\sqrt{h}\,\varepsilon_t$. Increasing $\sigma$ widens the cloud — this is the exploration knob GRPO needs.
 
-The grey dashed curve in each SDE panel is the underlying ODE trajectory, kept as a visual reference so the noise contribution is easy to read off.
+The grey dashed curve in each SDE panel is the underlying ODE trajectory, kept as a visual reference so the noise contribution is easy to read off. -->
 
 ---
 class: compact
@@ -359,7 +359,7 @@ $$
 \;=\; \frac{\lVert X_{t+h} - \mu_{\text{old}} \rVert^2 \;-\; \lVert X_{t+h} - \mu_\theta \rVert^2}{2\sigma^2 h}
 $$
 
-Substituting this to the KL penalty gives the following **closed form**:
+Taking the expectation $\mathrm{KL} = \mathbb{E}_{X \sim \pi_\theta}[\log r_t(X)]$ yields the **closed form** ([see Appendix B](/appendix-closed-form-kl)):
 
 $$
 \mathrm{KL}\!\bigl(\pi_\theta(\cdot\mid X_t)\,\Vert\,\pi_{\text{old}}(\cdot\mid X_t)\bigr)
@@ -386,9 +386,11 @@ $$
 The full GRPO objective summed over the $N$ Euler steps then depends only on $u^\theta$ (through $\mu_\theta$ inside $r_t$ and through the residual above):
 
 $$
+\boxed{\;
 \mathcal{L}_{\text{GRPO}}
 = \mathbb{E}\Bigl[\sum_{t}\min\bigl(r_t \hat{A},\, \operatorname{clip}(r_t, 1{-}\epsilon, 1{+}\epsilon)\hat{A}\bigr)\Bigr]
-\;-\;\beta \sum_{t}\frac{h\, C_t^2}{2\sigma_t^2}\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t)\bigr\rVert^2.
+\;-\;\beta \sum_{t}\frac{h\, C_t^2}{2\sigma_t^2}\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t)\bigr\rVert^2
+\;}
 $$
 
 > Closed-form KL is the practical benefit of staying Gaussian: low variance, no Monte-Carlo simulation, and gradients flow directly into the velocity network $u^\theta_t$.
@@ -437,40 +439,101 @@ class: compact
 routeAlias: appendix-rectified-flow
 ---
 
-# Appendix A — Rectified-flow drift $b^\theta_t$
+# Appendix A: Rectified-flow drift $b^\theta_t$
 
-**Recall.** The marginal-preserving SDE drift is the learned velocity *plus a score correction*:
-$$
-b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \tfrac{\sigma_t^2}{2}\, \nabla_x \log p_t(x).
-$$
+**Recall.** $b^\theta_t(x) = u^\theta_t(x) + \tfrac{\sigma_t^2}{2}\, \nabla_x \log p_t(x)$.
 
-**Setup.** Linear interpolant with $X_0 \sim \mathcal{N}(0, I)$ (initial / noise) and $X_1 \sim p_{\text{data}}$:
+**Setup.** Gaussian mixture path $X_t = \alpha_t X_0 + \beta_t X_1$ with $X_0 \sim \mathcal{N}(0, I)$, $X_1 \sim p_{\text{data}}$, and boundary $(\alpha_0,\beta_0) = (1, 0)$, $(\alpha_1,\beta_1) = (0, 1)$. Conditioning on the data endpoint gives a tractable Gaussian:
 $$
-X_t = (1-t)\, X_0 + t\, X_1,
-\qquad
-p_t(x \mid x_1) = \mathcal{N}\!\bigl(t\, x_1,\ (1-t)^2 I\bigr).
+p_t(x \mid x_1) \;=\; \mathcal{N}\!\bigl(\beta_t\, x_1,\ \alpha_t^2 I\bigr).
 $$
 
-**Step 1 — denoiser identity.** The learned velocity satisfies $u^\theta_t(x) = \mathbb{E}[X_1 - X_0 \mid X_t = x]$. Combining with $X_t = (1-t) X_0 + t X_1$ and taking conditional expectations,
+**Step 1. velocity $u_t$.** Differentiating the interpolant and conditioning on $X_t = x$:
 $$
-\mathbb{E}[X_1 \mid X_t = x] \;=\; x + (1-t)\, u^\theta_t(x).
+u_t(x) \;=\; \dot\alpha_t\, \mathbb{E}[X_0 \mid X_t = x] \;+\; \dot\beta_t\, \mathbb{E}[X_1 \mid X_t = x].
 $$
-
-**Step 2 — score via Tweedie.** For the Gaussian mixture $p_t(x) = \int \mathcal{N}(x;\, t\, x_1,\ (1-t)^2 I)\, p_{\text{data}}(x_1)\, dx_1$, Tweedie's identity gives
+Using the consistency constraint $\alpha_t\mathbb{E}[X_0|X_t] + \beta_t \mathbb{E}[X_1|X_t] = x$ to eliminate $\mathbb{E}[X_0|X_t]$:
 $$
-\nabla_x \log p_t(x) \;=\; \frac{t\, \mathbb{E}[X_1 \mid X_t = x] - x}{(1-t)^2}.
-$$
-Substituting Step 1 and simplifying the numerator $t\,(x + (1-t)\, u^\theta_t) - x = -(1-t)\, x + t(1-t)\, u^\theta_t$:
-$$
-\boxed{\;\nabla_x \log p_t(x) \;=\; \frac{t\, u^\theta_t(x) - x}{1-t}\;}.
+u_t(x) \;=\; \tfrac{\dot\alpha_t}{\alpha_t}\, x \;+\; \tfrac{\alpha_t \dot\beta_t - \beta_t \dot\alpha_t}{\alpha_t}\, \mathbb{E}[X_1 \mid X_t = x]. \qquad(\star)
 $$
 
-**Step 3 — plug into $b^\theta_t$.** Substituting the boxed score into the Recall formula:
+**Step 2. score $\nabla_x \log p_t$.** Differentiate the conditional Gaussian: $\nabla_x \log p_t(x|x_1) = -(x - \beta_t x_1)/\alpha_t^2$. Marginalising via $\nabla \log p_t(x) = \mathbb{E}_{X_1 \mid X_t = x}[\nabla \log p_t(x | X_1)]$ (differentiation under the integral + Bayes):
 $$
+\nabla_x \log p_t(x) \;=\; \frac{\beta_t\, \mathbb{E}[X_1 \mid X_t = x] \;-\; x}{\alpha_t^2}. \qquad(\star\star)
+$$
+
+Steps 1 and 2 give us $u_t$ and $\nabla_x \log p_t$ each as an affine function of the *same* unknown $\mathbb{E}[X_1 \mid X_t = x]$. Continued on the next slide.
+
+---
+class: compact
+---
+
+# Appendix A (cont.): Rectified-flow drift $b^\theta_t$
+
+**Step 3. eliminate $\mathbb{E}[X_1 \mid X_t]$.** Solving $(\star\star)$ for $\mathbb{E}[X_1|X_t]$ and substituting into $(\star)$ gives a relation that holds for *any* Gaussian mixture path:
+$$
+\boxed{\;\nabla_x \log p_t(x) \;=\; \frac{\beta_t\, u_t(x) \;-\; \dot\beta_t\, x}{\alpha_t\,(\alpha_t \dot\beta_t - \beta_t \dot\alpha_t)}\;}.
+$$
+
+> This relationship between score function and vector field holds true for any choice of the schedulers $\alpha_t$ and $\beta_t$.
+
+**Step 4. specialise to rectified flow.** Plug in $\alpha_t = 1-t,\ \beta_t = t$ (so $\dot\alpha_t = -1,\ \dot\beta_t = 1,\ \alpha_t\dot\beta_t - \beta_t\dot\alpha_t = 1$):
+$$
+\nabla_x \log p_t(x) \;=\; \frac{t\, u^\theta_t(x) - x}{1 - t}
+\quad\Longrightarrow\quad
 b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \frac{\sigma_t^2}{2(1-t)}\bigl(t\, u^\theta_t(x) - x\bigr).
 $$
 
-> The point of Step 2 is that the score is *exactly* re-expressible in the learned velocity — no separate score network is needed; the only remaining knob is the diffusion schedule $\sigma_t$.
+<!-- > The boxed formula in Step 3 is convention-agnostic — variance-preserving, EDM, and rectified flow all fall out by plugging in their $(\alpha_t, \beta_t)$. Rectified flow's straight-line schedule just happens to give the simplest expression. -->
+
+---
+class: compact
+routeAlias: appendix-closed-form-kl
+---
+
+# Appendix B: From $\log r_t$ to the closed-form KL
+
+**Setup.** Two isotropic Gaussian per-step policies with **identical** covariance:
+$$
+\pi_\theta(\cdot \mid X_t) = \mathcal{N}(\mu_\theta,\ \Sigma),
+\qquad
+\pi_{\text{old}}(\cdot \mid X_t) = \mathcal{N}(\mu_{\text{old}},\ \Sigma),
+\qquad
+\Sigma = \sigma_t^2 h\, I.
+$$
+
+**Step 1. log-ratio.** The Gaussian log-density is $\log \mathcal{N}(x; \mu, \Sigma) = -\tfrac{1}{2}(x-\mu)^\top \Sigma^{-1}(x-\mu) + \text{const}(\Sigma)$. The $\Sigma$-dependent normalizers are *the same* under $\theta$ and old, so they cancel:
+$$
+\log r_t(x) \;=\; \log \pi_\theta(x) - \log \pi_{\text{old}}(x)
+\;=\; \tfrac{1}{2\sigma_t^2 h}\bigl[\lVert x - \mu_{\text{old}} \rVert^2 - \lVert x - \mu_\theta \rVert^2\bigr].
+$$
+
+**Step 2. KL by definition.** $\mathrm{KL}(\pi_\theta \,\Vert\, \pi_{\text{old}}) = \mathbb{E}_{X \sim \pi_\theta}\bigl[\log r_t(X)\bigr]$. Parameterise the sample under $\pi_\theta$ as $X = \mu_\theta + \sigma_t \sqrt{h}\, \varepsilon$ with $\varepsilon \sim \mathcal{N}(0, I)$. Then
+$$
+X - \mu_\theta = \sigma_t \sqrt{h}\, \varepsilon,
+\qquad
+X - \mu_{\text{old}} = (\mu_\theta - \mu_{\text{old}}) + \sigma_t \sqrt{h}\, \varepsilon.
+$$
+
+**Step 3. expand the squared norms.** Using $\lVert a + b \rVert^2 = \lVert a \rVert^2 + 2 a^\top b + \lVert b \rVert^2$:
+$$
+\lVert X - \mu_{\text{old}} \rVert^2 - \lVert X - \mu_\theta \rVert^2
+\;=\; \lVert \mu_\theta - \mu_{\text{old}} \rVert^2 \;+\; 2 \sigma_t \sqrt{h}\,(\mu_\theta - \mu_{\text{old}})^\top \varepsilon.
+$$
+(The $\sigma_t^2 h\,\lVert\varepsilon\rVert^2$ terms cancel between the two squared norms.)
+
+**Step 4. take the expectation.** $\mathbb{E}[\varepsilon] = 0$, so the cross-term vanishes:
+$$
+\mathbb{E}_{X \sim \pi_\theta}\bigl[\lVert X - \mu_{\text{old}} \rVert^2 - \lVert X - \mu_\theta \rVert^2\bigr]
+\;=\; \lVert \mu_\theta - \mu_{\text{old}} \rVert^2.
+$$
+
+Dividing by $2\sigma_t^2 h$ recovers the formula on the main slide:
+$$
+\boxed{\;\mathrm{KL}\!\bigl(\pi_\theta \,\Vert\, \pi_{\text{old}}\bigr) \;=\; \frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma_t^2 h}\;}.
+$$
+
+> This is the same general fact that $\mathrm{KL}(\mathcal{N}(\mu_1, \Sigma) \,\Vert\, \mathcal{N}(\mu_2, \Sigma)) = \tfrac{1}{2}(\mu_1 - \mu_2)^\top \Sigma^{-1}(\mu_1 - \mu_2)$, written out per Euler step.
 
 ---
 layout: end
