@@ -60,6 +60,19 @@
 .slidev-layout.roomy li { margin: 0.75em 0; }
 .slidev-layout.roomy .katex-display { margin: 0.7em 0; }
 
+/* Middle: keep the h1 at the top, vertically center everything after it.
+   Combine with `compact` etc. */
+.slidev-layout.middle {
+  display: flex;
+  flex-direction: column;
+}
+.slidev-layout.middle > h1:first-child + * {
+  margin-top: auto;
+}
+.slidev-layout.middle > *:last-child:not(h1) {
+  margin-bottom: auto;
+}
+
 .slidev-layout a {
   color: var(--epfl-text);
   text-decoration: none;
