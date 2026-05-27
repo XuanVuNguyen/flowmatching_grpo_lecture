@@ -1,0 +1,481 @@
+/* EPFL 2025 brand palette */
+:root {
+  --epfl-red: #FF0000;
+  --epfl-text: #1F1B1A;
+  --epfl-text-soft: #6E6967;
+  --epfl-rule: #E5E2E1;
+  --epfl-bg: #FFFFFF;
+  --epfl-bg-soft: #F6F4F3;
+
+  --slidev-theme-primary: var(--epfl-text);
+}
+
+.slidev-layout {
+  font-family: 'Inter', 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+  color: var(--epfl-text);
+  background: var(--epfl-bg);
+}
+
+.slidev-layout h1,
+.slidev-layout h2,
+.slidev-layout h3,
+.slidev-layout h4 {
+  font-family: inherit;
+  color: var(--epfl-text);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.slidev-layout h1 {
+  font-size: 2.0rem;
+  line-height: 1.2;
+  margin: 0 0 1.1rem 0;
+  font-weight: 600;
+}
+
+.slidev-layout h2 {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--epfl-text);
+}
+
+.slidev-layout p,
+.slidev-layout li {
+  color: var(--epfl-text);
+  line-height: 1.55;
+}
+
+/* Override default-theme: it sets opacity:.5 on first <p> after <h1>. */
+.slidev-layout h1 + p { opacity: 1; margin-top: 0.4em; }
+
+/* Compact slides: opt-in via `class: compact` in frontmatter. */
+.slidev-layout.compact { font-size: 0.85rem; }
+.slidev-layout.compact h1 { font-size: 1.6rem; margin-bottom: 0.7rem; }
+.slidev-layout.compact p { line-height: 1.45; margin: 0.7em 0; }
+.slidev-layout.compact li { line-height: 1.4; margin: 0.6em 0; }
+.slidev-layout.compact .katex-display { margin: 0.55em 0; }
+
+/* Roomy: extra breathing room between paragraphs/lists on dense slides. */
+.slidev-layout.roomy p { margin: 0.9em 0; }
+.slidev-layout.roomy li { margin: 0.75em 0; }
+.slidev-layout.roomy .katex-display { margin: 0.7em 0; }
+
+/* Middle: keep the h1 at the top, vertically center everything after it.
+   Combine with `compact` etc. */
+.slidev-layout.middle {
+  display: flex;
+  flex-direction: column;
+}
+.slidev-layout.middle > h1:first-child + * {
+  margin-top: auto;
+}
+.slidev-layout.middle > *:last-child:not(h1) {
+  margin-bottom: auto;
+}
+
+.slidev-layout a {
+  color: var(--epfl-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--epfl-red);
+}
+
+.slidev-layout strong { color: var(--epfl-text); font-weight: 600; }
+
+.slidev-layout code {
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
+  color: var(--epfl-text);
+  background: var(--epfl-bg-soft);
+  padding: 0.05em 0.3em;
+  border-radius: 3px;
+  font-size: 0.92em;
+}
+
+.slidev-layout pre code { background: transparent; padding: 0; }
+
+.slidev-layout blockquote {
+  border-left: 2px solid var(--epfl-text-soft);
+  padding-left: 0.9em;
+  color: var(--epfl-text-soft);
+  font-style: normal;
+  margin: 0.6em 0;
+  background: transparent;
+}
+
+.slidev-layout ul {
+  list-style: disc outside;
+  padding-left: 1.3em;
+  margin: 0.5em 0;
+}
+.slidev-layout ol {
+  list-style: decimal outside;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.slidev-layout ul li,
+.slidev-layout ol li {
+  padding-left: 0.5em;
+  margin: 0.65em 0;
+}
+.slidev-layout ul li::marker { color: var(--epfl-text-soft); font-size: 0.85em; }
+.slidev-layout ol li::marker { color: var(--epfl-text-soft); }
+
+/* Shared chrome — single thin line at top, EPFL logo, small footer */
+.epfl-chrome-rule {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 2px;
+  background: var(--epfl-red);
+  z-index: 5;
+}
+
+.epfl-chrome-logo {
+  position: absolute;
+  top: 24px;
+  right: 36px;
+  height: 18px;
+  z-index: 6;
+  opacity: 0.9;
+}
+
+/* Top-right chrome: presentation title + EPFL logo, vertically centered */
+.epfl-chrome-top {
+  position: absolute;
+  top: 24px;
+  right: 36px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 6;
+  line-height: 1;
+}
+.epfl-chrome-top .epfl-chrome-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--epfl-text-soft);
+}
+.epfl-chrome-top .epfl-chrome-logo {
+  /* override the absolute placement above when nested in the flex container */
+  position: static;
+  top: auto;
+  right: auto;
+}
+
+.epfl-chrome-footer {
+  position: absolute;
+  bottom: 18px;
+  left: 36px;
+  right: 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.62rem;
+  color: var(--epfl-text-soft);
+  letter-spacing: 0.04em;
+  z-index: 5;
+}
+
+.epfl-chrome-footer .meta { display: flex; gap: 0.6em; }
+.epfl-chrome-footer .meta .sep { color: var(--epfl-text-soft); opacity: 0.5; }
+
+/* Cover layout — minimal: white background, no hero image by default */
+.epfl-cover {
+  background: var(--epfl-bg);
+  padding: 80px 60px 60px 60px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.epfl-cover .cover-content {
+  max-width: 980px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.epfl-cover .cover-content h1 {
+  color: var(--epfl-text);
+  font-size: 2.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  margin: 0 0 0.55rem 0;
+  white-space: nowrap;
+}
+
+.epfl-cover .cover-content h2 {
+  color: var(--epfl-text);
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.45;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.epfl-cover .accent-bar {
+  width: 36px;
+  height: 2px;
+  background: var(--epfl-red);
+  margin: 0 0 22px 0;
+}
+
+.epfl-cover .cover-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 56px;
+  margin-top: 44px;
+  align-items: flex-start;
+}
+
+.epfl-cover .cover-meta > div { min-width: 0; }
+
+.epfl-cover .cover-meta .label {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--epfl-text-soft);
+  margin: 0 0 6px 0;
+  line-height: 1;
+}
+
+.epfl-cover .cover-meta .value {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--epfl-text);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.epfl-cover .cover-logo {
+  position: absolute;
+  top: 36px;
+  left: 60px;
+  height: 22px;
+}
+
+/* Section divider — white background, large quiet number, thin red rule */
+.epfl-section {
+  background: var(--epfl-bg);
+  color: var(--epfl-text);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 80px;
+}
+
+.epfl-section .section-eyebrow {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--epfl-text-soft);
+  margin-bottom: 14px;
+}
+
+.epfl-section h1 {
+  color: var(--epfl-text);
+  font-size: 2.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.epfl-section .section-rule {
+  width: 36px;
+  height: 2px;
+  background: var(--epfl-red);
+  margin-top: 20px;
+}
+
+/* End-of-deck — same minimal style as cover */
+.epfl-end {
+  background: var(--epfl-bg);
+  color: var(--epfl-text);
+  padding: 80px 60px 60px 60px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.epfl-end .end-content { max-width: 880px; }
+.epfl-end .end-content h1 {
+  color: var(--epfl-text);
+  font-size: 2.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.3em 0;
+}
+.epfl-end .end-content h2 {
+  color: var(--epfl-text-soft);
+  font-size: 1rem;
+  font-weight: 400;
+}
+.epfl-end .accent-bar {
+  width: 36px;
+  height: 2px;
+  background: var(--epfl-red);
+  margin-bottom: 22px;
+}
+.epfl-end .cover-meta {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 0 56px;
+  margin-top: 56px;
+}
+.epfl-end .cover-meta .label {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--epfl-text-soft);
+  margin-bottom: 4px;
+}
+.epfl-end .cover-meta .value { font-size: 0.85rem; font-weight: 500; }
+
+/* Helpers */
+.epfl-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.epfl-cols.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+.vf-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+  margin: 0.9em 2.0em;
+}
+.vf-row .vf-left > :first-child { margin-top: 0; }
+.vf-row .vf-left > :last-child { margin-bottom: 0; }
+.vf-row .vf-right { display: flex; justify-content: center; align-items: center; }
+
+.epfl-card {
+  border-top: 1px solid var(--epfl-rule);
+  padding: 12px 0 0 0;
+  background: transparent;
+}
+.epfl-card .card-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--epfl-text-soft);
+  margin-bottom: 6px;
+}
+
+/* Definition / Theorem callouts — subtle, scannable */
+.slidev-layout .definition,
+.slidev-layout .theorem,
+.slidev-layout .example,
+.slidev-layout .note,
+.slidev-layout .terminology {
+  border-left: 3px solid var(--epfl-text-soft);
+  background: var(--epfl-bg-soft);
+  padding: 6px 14px;
+  margin: 0.9em 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.slidev-layout .theorem { border-left-color: var(--epfl-red); }
+.slidev-layout .example { border-left-color: #2ca02c; background: transparent; }
+.slidev-layout .terminology {
+  border-left-color: #1f77b4;
+  background: rgba(31, 119, 180, 0.06);
+}
+
+.slidev-layout .definition::before,
+.slidev-layout .theorem::before,
+.slidev-layout .example::before,
+.slidev-layout .terminology::before {
+  display: block;
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--epfl-text-soft);
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.slidev-layout .definition::before { content: "Definition"; }
+.slidev-layout .theorem::before { content: "Theorem"; color: var(--epfl-red); }
+.slidev-layout .example::before { content: "Example"; color: #2ca02c; }
+.slidev-layout .terminology::before { content: "Terminology"; color: #1f77b4; }
+
+.slidev-layout .definition > :first-child,
+.slidev-layout .theorem > :first-child,
+.slidev-layout .example > :first-child,
+.slidev-layout .note > :first-child,
+.slidev-layout .terminology > :first-child { margin-top: 0; }
+.slidev-layout .definition > :last-child,
+.slidev-layout .theorem > :last-child,
+.slidev-layout .example > :last-child,
+.slidev-layout .note > :last-child,
+.slidev-layout .terminology > :last-child { margin-bottom: 0; }
+
+.slidev-layout .definition .katex-display,
+.slidev-layout .theorem .katex-display,
+.slidev-layout .note .katex-display,
+.slidev-layout .terminology .katex-display { margin: 0.25em 0; }
+
+/* Tables */
+.slidev-layout table { border-collapse: collapse; }
+.slidev-layout th {
+  background: transparent;
+  color: var(--epfl-text-soft);
+  font-weight: 500;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--epfl-text);
+  text-align: left;
+}
+.slidev-layout td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--epfl-rule);
+}
+
+/* Notebook-to-practice step cards */
+.slidev-layout .practice-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 1.4em;
+}
+.slidev-layout .practice-step {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+  padding: 16px 20px;
+  background: var(--epfl-bg-soft);
+  border-radius: 10px;
+}
+.slidev-layout .practice-step .step-num {
+  flex: 0 0 auto;
+  align-self: center;
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--epfl-text-soft);
+  min-width: 1.6ch;
+  text-align: center;
+}
+.slidev-layout .practice-step .step-body {
+  flex: 1;
+  color: var(--epfl-text);
+}
+.slidev-layout .practice-step .step-title {
+  font-weight: 700;
+  color: var(--epfl-text);
+  margin-bottom: 4px;
+  font-size: 1.05rem;
+}
+
+/* Tight: smaller font and tighter block margins, for dense slides with
+   many definition/theorem/note boxes. Composable with `compact`. */
+.slidev-layout.tight { font-size: 0.78rem; }
+.slidev-layout.tight h1 { font-size: 1.45rem; margin-bottom: 0.5rem; }
+.slidev-layout.tight p { line-height: 1.4; margin: 0.45em 0; }
+.slidev-layout.tight li { line-height: 1.35; margin: 0.4em 0; }
+.slidev-layout.tight .katex-display { margin: 0.4em 0; }
+.slidev-layout.tight .note,
+.slidev-layout.tight .definition,
+.slidev-layout.tight .theorem,
+.slidev-layout.tight .example,
+.slidev-layout.tight .terminology { margin: 0.5em 0; padding: 4px 12px; }
