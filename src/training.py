@@ -43,6 +43,8 @@ def grpo_train(
     model,
     ref_model,
     reward_func,
+    step_number,
+    sigma,
     iters: int = 150,
     group_size: int = 16,
     n_groups: int = 4,
@@ -51,8 +53,6 @@ def grpo_train(
     clip_ratio: float = 0.2,
     inner_epochs: int = 2,
     log_every: int = 20,
-    step_number=100,
-    sigma=0.15
 ):
     """Group Relative Policy Optimization for a stochastic flow policy."""
     opt = torch.optim.Adam(model.parameters(), lr=lr)
