@@ -466,3 +466,16 @@
   margin-bottom: 4px;
   font-size: 1.05rem;
 }
+
+/* Tight: smaller font and tighter block margins, for dense slides with
+   many definition/theorem/note boxes. Composable with `compact`. */
+.slidev-layout.tight { font-size: 0.78rem; }
+.slidev-layout.tight h1 { font-size: 1.45rem; margin-bottom: 0.5rem; }
+.slidev-layout.tight p { line-height: 1.4; margin: 0.45em 0; }
+.slidev-layout.tight li { line-height: 1.35; margin: 0.4em 0; }
+.slidev-layout.tight .katex-display { margin: 0.4em 0; }
+.slidev-layout.tight .note,
+.slidev-layout.tight .definition,
+.slidev-layout.tight .theorem,
+.slidev-layout.tight .example,
+.slidev-layout.tight .terminology { margin: 0.5em 0; padding: 4px 12px; }

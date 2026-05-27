@@ -33,14 +33,10 @@ props. Override `image` to swap the background photo:
 layout: outline
 ---
 
-1. ODEs and trajectories
-2. Probability paths & vector fields
-3. GRPO refresher
-4. From GRPO to flow matching
-5. Brownian motion & SDEs
-6. Putting the algorithm together
-7. Ablations: KL vs no-KL
-8. Hands-on notebook
+1. Foundations of Flow Matching
+2. Brownian Motion & Stochastic Differential Equations
+3. GRPO & Flow Matching
+4. Notebook & References
 
 ---
 layout: section
@@ -250,56 +246,21 @@ In the diffusion literature this is usually called a **noise schedule**, paramet
 </div>
 
 ---
-class: compact
----
-
-# GRPO refresher
-
-Group Relative Policy Optimisation maximises an advantage-weighted ratio with
-a clipping safeguard:
-
-$$
-\mathcal{L}_{\text{GRPO}} = \mathbb{E}\Bigl[\min\bigl(r_t \hat{A}_t,\
-\operatorname{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t\bigr)\Bigr]
-$$
-
-- `r_t = π_θ(a|s) / π_ref(a|s)`
-- Advantage `Â` computed from a **group** of rollouts, no critic needed
-- KL-to-reference is added as a penalty (or removed; see ablation later)
-
----
 layout: section
 part: 2
 ---
 
-# Brownian motion & SDEs
+# Brownian motion & Stochastic Differential Equations (SDE)
 
 ---
-class: compact roomy
----
-
-# Brownian motion & SDEs
-
-A **stochastic differential equation (SDE)** generalises the ODE by adding a noise term:
-
-$$
-dx_t = b(x_t, t)\, dt + \sigma(x_t, t)\, dW_t
-$$
-
-where $W_t$ is **standard Brownian motion** — independent Gaussian increments $dW_t \sim \mathcal{N}(0, dt\, I)$ across time.
-
-- $b(x_t, t)$ — the **drift**, the deterministic analogue of the ODE velocity field.
-- $\sigma(x_t, t)$ — the **diffusion**, the per-step noise injection.
-
-Setting $\sigma = 0$ recovers the ODE. With $\sigma > 0$ every rollout is a random path: the same starting point yields different endpoints. *That* is the source of exploration we need under GRPO.
-
----
-class: compact
+class: compact tight
 ---
 
 # From ODE to SDE in Practice
 
 We discretise the SDE with the **Euler–Maruyama** scheme. Comparing one step of each:
+
+<div class="note">
 
 $$
 \underbrace{X_{t+h} = X_t + h\, u^\theta_t(X_t)}_{\text{ODE (deterministic)}}
@@ -307,21 +268,40 @@ $$
 \underbrace{X_{t+h} = X_t + h\, b^\theta_t(X_t) + \sigma\sqrt{h}\,\varepsilon_t}_{\text{SDE (stochastic)}}
 $$
 
+</div>
+
 with $\varepsilon_t \sim \mathcal{N}(0, I)$ drawn **independently at every step**.
 
 - The noise scale $\sigma$ controls exploration: $\sigma \to 0$ recovers the ODE; larger $\sigma$ gives noisier, more diverse rollouts.
 - The drift $b^\theta_t$ is the **learned velocity field corrected by the score** so that the marginals $p_t$ are preserved:
+
+<div class="note">
+
 $$
 b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \tfrac{\sigma^2}{2}\, \nabla_x \log p_t(x)
 $$
-- For **rectified flow** with linear interpolant $X_t = (1-t) X_0 + t X_1$ ($X_0 \sim \mathcal{N}(0, I)$ noise, $X_1 \sim p_{\text{data}}$), the score can be re-expressed purely in terms of $u^\theta_t$, giving the closed-form drift ([see Appendix A](/appendix-rectified-flow)):
+
+</div>
+
+- For **flow** with linear interpolant $X_t = (1-t) X_0 + t X_1$ ($X_0 \sim \mathcal{N}(0, I)$ noise, $X_1 \sim p_{\text{data}}$), the score can be re-expressed purely in terms of $u^\theta_t$, giving the closed-form drift ([see Appendix A](/appendix-rectified-flow)):
+
+<div class="note">
+
 $$
 b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \frac{\sigma_t^2}{2(1-t)}\,\bigl(t\, u^\theta_t(x) - x\bigr)
 $$
+
+</div>
+
 - Each Euler step is therefore a **Gaussian transition**:
+
+<div class="note">
+
 $$
 \pi_\theta(X_{t+h} \mid X_t) = \mathcal{N}\!\bigl(X_t + h\, b^\theta_t(X_t),\ \sigma^2 h\, I\bigr)
 $$
+
+</div>
 
 This is exactly the policy we will optimise with GRPO: a sequence of $N$ Gaussian actions, one per integration step.
 
@@ -341,61 +321,154 @@ class: compact
 The grey dashed curve in each SDE panel is the underlying ODE trajectory, kept as a visual reference so the noise contribution is easy to read off. -->
 
 ---
-class: compact
+layout: section
+part: 3
+---
+
+# GRPO & Flow Matching
+
+---
+class: compact tight
+---
+
+# GRPO refresher
+
+A **critic-free PPO variant**: the baseline comes from a *group* of rollouts that share the same prompt, not from a learned value function.
+
+**Group sampling.** For prompt $s$, draw $G$ completions from the *ref* policy and score each with a verifier:
+
+<div class="note">
+
+$$
+a_i \sim \pi_{\theta_{\text{ref}}}(\cdot \mid s), \qquad r_i = r_{\text{ver}}(s, a_i), \qquad i = 1, \ldots, G.
+$$
+
+</div>
+
+The **group-relative advantage** $\hat{A}_i$ rescales each reward by the group mean and std (formula on the next-to-last slide).
+
+**Token ratio.** For each token $a_{i,t}$ of completion $a_i$,
+
+<div class="note">
+
+$$
+\rho_{i,t}(\theta) \;:=\; \frac{\pi_\theta(a_{i,t} \mid s,\, a_{i,<t})}{\pi_{\theta_{\text{ref}}}(a_{i,t} \mid s,\, a_{i,<t})}.
+$$
+
+</div>
+
+**Full GRPO objective** — PPO-clipped surrogate plus a KL anchor to a frozen reference $\pi_{\text{ref}}$:
+
+<div class="note">
+
+$$
+\max_\theta \;\; \mathbb{E}_{s,\,a_{1:G} \sim \pi_{\theta_{\text{ref}}}}\!\Biggl[\frac{1}{G}\sum_{i=1}^{G}\frac{1}{T_i}\sum_{t=1}^{T_i} \min\!\bigl(\rho_{i,t}(\theta)\hat{A}_i,\; \operatorname{clip}\!\bigl(\rho_{i,t}(\theta),\, 1-\epsilon_{\text{clip}},\, 1+\epsilon_{\text{clip}}\bigr)\hat{A}_i\bigr)\Biggr] \;-\; \beta\,\hat{D}_{\text{KL}}\!\bigl(\pi_\theta \,\Vert\, \pi_{\text{ref}}\bigr)
+$$
+
+</div>
+
+- Above-baseline siblings get $\hat{A}_i > 0$ and are pushed up; below-baseline ones get $\hat{A}_i < 0$ and are suppressed.
+- Clipping at radius $\epsilon_{\text{clip}}$ stops the per-token ratio from drifting too far in one update — the standard PPO safeguard.
+- The KL penalty anchors to $\pi_{\text{ref}}$ (a fixed snapshot), **not** to $\pi_{\theta_{\text{ref}}}$ — the same pattern as RLHF.
+
+---
+class: compact tight
 ---
 
 # GRPO with Gaussian Policies $\Rightarrow$ Closed-Form KL
 
-Each Euler step's policy is Gaussian with covariance $\sigma_t^2 h\, I$ **that does not depend on $\theta$** (the schedule $\sigma_t$ is chosen, not learned). Only the *mean* moves with $\theta$. Write $\mu_\theta = X_t + h\, b^\theta_t(X_t)$ and $\mu_{\text{old}} = X_t + h\, b^{\text{old}}_t(X_t)$.
+Policy at each step is Gaussian with covariance $\sigma_t^2 h\, I$ **that does not depend on $\theta$**. Only the *mean* moves with $\theta$
 
-The per-step log-ratio collapses to a difference of squared distances:
+With $\mu_t^\theta = X_t + h\, b^\theta_t(X_t)$ and $\mu_t^{\text{ref}} = X_t + h\, b^{\text{ref}}_t(X_t)$
 
-$$
-\log r_t \;=\; \log\frac{\pi_\theta(X_{t+h}\mid X_t)}{\pi_{\text{old}}(X_{t+h}\mid X_t)}
-\;=\; \frac{\lVert X_{t+h} - \mu_{\text{old}} \rVert^2 \;-\; \lVert X_{t+h} - \mu_\theta \rVert^2}{2\sigma_t^2 h}
-$$
+The per-step log-ratio reduces to a difference of squared distances:
 
-Taking the expectation $\mathrm{KL} = \mathbb{E}_{X \sim \pi_\theta}[\log r_t(X)]$ yields the **closed form** ([see Appendix B](/appendix-closed-form-kl)):
+<div class="note">
 
 $$
-\mathrm{KL}\!\bigl(\pi_\theta(\cdot\mid X_t)\,\Vert\,\pi_{\text{old}}(\cdot\mid X_t)\bigr)
-\;=\; \frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma_t^2 h}.
+\log\frac{\pi_\theta(X_{t+h}\mid X_t)}{\pi_{\text{ref}}(X_{t+h}\mid X_t)}
+\;=\; \frac{\lVert X_{t+h} - \mu_{\text{ref}} \rVert^2 \;-\; \lVert X_{t+h} - \mu_\theta \rVert^2}{2\sigma_t^2 h}
 $$
 
-Substituting $\mu = X_t + h\, b_t$ and the rectified-flow drift $b_t = u_t + \tfrac{\sigma_t^2}{2(1-t)}(t\, u_t - x)$, the $-x$ score-correction term **cancels in the difference**:
+</div>
+
+Taking the expectation $\mathrm{KL} = \mathbb{E}_{X \sim \pi^\theta}[\log r_t(X)]$ results in the **closed form** ([see Appendix B](/appendix-closed-form-kl)):
+
+<div class="note">
 
 $$
-\mu_\theta - \mu_{\text{old}}
-\;=\; h\,\bigl(b^\theta_t(X_t) - b^{\text{old}}_t(X_t)\bigr)
-\;=\; h\, C_t\,\bigl(u^\theta_t(X_t) - u^{\text{old}}_t(X_t)\bigr),
+\mathrm{KL}\!\bigl(\pi^\theta(\cdot\mid X_t)\,\Vert\,\pi^{\text{ref}}(\cdot\mid X_t)\bigr)
+\;=\; \frac{\lVert \mu_t^\theta - \mu_t^{\text{ref}} \rVert^2}{2\sigma_t^2 h}.
+$$
+
+</div>
+
+Substituting $\mu_t = X_t + h\, b_t$ and the flow drift $b_t = u_t + \tfrac{\sigma_t^2}{2(1-t)}(t\, u_t - x)$, the $-x$ score-correction term **cancels in the difference**:
+
+<div class="note">
+
+$$
+\mu_t^\theta - \mu_t^{\text{ref}}
+\;=\; h\,\bigl(b^\theta_t(X_t) - b^{\text{ref}}_t(X_t)\bigr)
+\;=\; h\, C_t\,\bigl(u^\theta_t(X_t) - u^{\text{ref}}_t(X_t)\bigr),
 \qquad
 C_t \;\triangleq\; 1 + \frac{t\,\sigma_t^2}{2(1-t)}.
 $$
 
-So the per-step KL (at step time $t$) reduces to a **time-dependent** weight times the squared residual of the learned velocity:
+</div>
+
+So the per-step KL reduces to a **time-dependent** weight times the squared residual of the learned velocity:
+
+<div class="note">
 
 $$
-\mathrm{KL}\!\bigl(\pi_\theta(\cdot \mid X_t)\,\Vert\,\pi_{\text{old}}(\cdot \mid X_t)\bigr)
-\;=\; \frac{h\, C_t^2}{2\sigma_t^2}\,\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t) \bigr\rVert^2,
+\mathrm{KL}\!\bigl(\pi^\theta(\cdot \mid X_t)\,\Vert\,\pi^{\text{ref}}(\cdot \mid X_t)\bigr)
+\;=\; \frac{h\, C_t^2}{2\sigma_t^2}\,\bigl\lVert u^\theta_t(X_t) - u^{\text{ref}}_t(X_t) \bigr\rVert^2.
 $$
 
-where the weight $h\, C_t^2 / (2\sigma_t^2)$ varies with $t$ via *both* $\sigma_t$ and $C_t = 1 + t\sigma_t^2/[2(1-t)]$.
+</div>
 
 --- 
-class: compact middle
+class: compact tight middle
 ---
 
 # GRPO with Gaussian Policies $\Rightarrow$ Closed-Form KL (cont.)
 
-Summing over the Euler steps $k = 0, \ldots, N-1$ with $t_k = k h$ (and noting that $\sigma_{t_k}$ and $C_{t_k}$ each depend on $k$), the GRPO objective depends only on $u^\theta$:
+**Group-relative advantage** (recall, $G$ rollouts scored by the verifier):
+
+<div class="note">
 
 $$
-\boxed{\;
+\hat{A}_i \;=\; \frac{r_i - \bar{r}_s}{\hat{\sigma}_s + \epsilon_{\text{std}}},
+\qquad
+\bar{r}_s = \tfrac{1}{G}\!\sum_{i=1}^{G} r_i,
+\qquad
+\hat{\sigma}_s^2 = \tfrac{1}{G}\!\sum_{i=1}^{G}(r_i - \bar{r}_s)^2.
+$$
+
+</div>
+
+**Time-dependent KL weight** (recall):
+
+<div class="note">
+
+$$
+C_t \;\triangleq\; 1 + \frac{t\,\sigma_t^2}{2(1-t)}.
+$$
+
+</div>
+
+Aggregating the per-step terms across all steps of the sampled trajectory, the objective becomes:
+
+<div class="note">
+
+$$
 \mathcal{L}_{\text{GRPO}}
 = \mathbb{E}\Bigl[\sum_{k}\min\bigl(r_{t_k} \hat{A},\, \operatorname{clip}(r_{t_k}, 1{-}\epsilon, 1{+}\epsilon)\hat{A}\bigr)\Bigr]
-\;-\;\beta \sum_{k}\frac{h\, C_{t_k}^2}{2\sigma_{t_k}^2}\bigl\lVert u^\theta_{t_k}(X_{t_k}) - u^{\text{old}}_{t_k}(X_{t_k})\bigr\rVert^2
-\;}
+\;-\;\beta \sum_{k}\frac{h\, C_{t_k}^2}{2\sigma_{t_k}^2}\bigl\lVert u^\theta_{t_k}(X_{t_k}) - u^{\text{ref}}_{t_k}(X_{t_k})\bigr\rVert^2
 $$
+
+</div>
 
 <!-- > Closed-form KL is the practical benefit of staying Gaussian: low variance, no Monte-Carlo simulation, and gradients flow directly into the velocity network $u^\theta_t$. -->
 
@@ -436,26 +509,13 @@ Watch the trade-off between maximizing the reward and staying close to the prior
 class: compact
 ---
 
-# Reference
+# References
 
-| Layout | When to use |
-| --- | --- |
-| `cover` | Title page |
-| `outline` | Table of contents |
-| `section` | Red divider between chapters |
-| `default` | Standard content |
-| `two-cols` | Side-by-side comparison (use `::right::`) |
-| `full-image` | Hero image / single equation |
-| `end` | Closing thank-you slide |
+- Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang, H., Zhang, M., Li, Y. K., Wu, Y., Guo, D. (2024). *DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models*. arXiv:2402.03300. [arxiv.org/abs/2402.03300](https://arxiv.org/abs/2402.03300)
 
-Reusable bits in `styles/global.css`:
+- Liu, J., Liu, G., Liang, J., Li, Y., Liu, J., Wang, X., Wan, P., Zhang, D., Ouyang, W. (2025). *Flow-GRPO: Training Flow Matching Models via Online RL*. arXiv:2505.05470. [arxiv.org/abs/2505.05470](https://arxiv.org/abs/2505.05470)
 
-```html
-<div class="epfl-cols">
-  <div class="epfl-card"><div class="card-title">Left</div>…</div>
-  <div class="epfl-card"><div class="card-title">Right</div>…</div>
-</div>
-```
+- Holderrieth, P., Erives, E. (2026). *Introduction to Flow Matching and Diffusion Models*. arXiv:2506.02070. [diffusion.csail.mit.edu](https://diffusion.csail.mit.edu/)
 
 ---
 layout: section
@@ -465,7 +525,7 @@ part: A
 # Appendix
 
 ---
-class: compact
+class: compact tight
 routeAlias: appendix-rectified-flow
 ---
 
@@ -474,104 +534,151 @@ routeAlias: appendix-rectified-flow
 **Recall.** $b^\theta_t(x) = u^\theta_t(x) + \tfrac{\sigma_t^2}{2}\, \nabla_x \log p_t(x)$.
 
 **Setup.** Gaussian mixture path $X_t = \alpha_t X_0 + \beta_t X_1$ with $X_0 \sim \mathcal{N}(0, I)$, $X_1 \sim p_{\text{data}}$, and boundary $(\alpha_0,\beta_0) = (1, 0)$, $(\alpha_1,\beta_1) = (0, 1)$. Conditioning on the data endpoint gives a tractable Gaussian:
+
+<div class="note">
+
 $$
 p_t(x \mid x_1) \;=\; \mathcal{N}\!\bigl(\beta_t\, x_1,\ \alpha_t^2 I\bigr).
 $$
 
-**Step 1. velocity $u_t$.** Differentiating the interpolant and conditioning on $X_t = x$:
+</div>
+
+**Step 1.** Differentiating the interpolant and conditioning on $X_t = x$:
+
+<div class="note">
+
 $$
 u_t(x) \;=\; \dot\alpha_t\, \mathbb{E}[X_0 \mid X_t = x] \;+\; \dot\beta_t\, \mathbb{E}[X_1 \mid X_t = x].
 $$
+
+</div>
+
 Using the consistency constraint $\alpha_t\mathbb{E}[X_0|X_t] + \beta_t \mathbb{E}[X_1|X_t] = x$ to eliminate $\mathbb{E}[X_0|X_t]$:
+
+<div class="note">
+
 $$
 u_t(x) \;=\; \tfrac{\dot\alpha_t}{\alpha_t}\, x \;+\; \tfrac{\alpha_t \dot\beta_t - \beta_t \dot\alpha_t}{\alpha_t}\, \mathbb{E}[X_1 \mid X_t = x]. \qquad(\star)
 $$
 
-**Step 2. score $\nabla_x \log p_t$.** Differentiate the conditional Gaussian: $\nabla_x \log p_t(x|x_1) = -(x - \beta_t x_1)/\alpha_t^2$. Marginalising via $\nabla \log p_t(x) = \mathbb{E}_{X_1 \mid X_t = x}[\nabla \log p_t(x | X_1)]$ (differentiation under the integral + Bayes):
+</div>
+
+**Step 2.** Differentiate the conditional Gaussian: $\nabla_x \log p_t(x|x_1) = -(x - \beta_t x_1)/\alpha_t^2$. Marginalising via $\nabla \log p_t(x) = \mathbb{E}_{X_1 \mid X_t = x}[\nabla \log p_t(x | X_1)]$ (differentiation under the integral + Bayes):
+
+<div class="note">
+
 $$
 \nabla_x \log p_t(x) \;=\; \frac{\beta_t\, \mathbb{E}[X_1 \mid X_t = x] \;-\; x}{\alpha_t^2}. \qquad(\star\star)
 $$
 
+</div>
+
 Steps 1 and 2 give us $u_t$ and $\nabla_x \log p_t$ each as an affine function of the *same* unknown $\mathbb{E}[X_1 \mid X_t = x]$. Continued on the next slide.
 
 ---
-class: compact
+class: compact tight
 ---
 
 # Appendix A (cont.): Rectified-flow drift $b^\theta_t$
 
-**Step 3. eliminate $\mathbb{E}[X_1 \mid X_t]$.** Solving $(\star\star)$ for $\mathbb{E}[X_1|X_t]$ and substituting into $(\star)$ gives a relation that holds for *any* Gaussian mixture path:
+**Step 3.** Solving $(\star\star)$ for $\mathbb{E}[X_1|X_t]$ and substituting into $(\star)$ gives a relation for *any* Gaussian mixture path:
+
+<div class="note">
+
 $$
 \boxed{\;\nabla_x \log p_t(x) \;=\; \frac{\beta_t\, u_t(x) \;-\; \dot\beta_t\, x}{\alpha_t\,(\alpha_t \dot\beta_t - \beta_t \dot\alpha_t)}\;}.
 $$
 
-> This relationship between score function and vector field holds true for any choice of the schedulers $\alpha_t$ and $\beta_t$.
+</div>
 
-**Step 4. specialise to rectified flow.** Plug in $\alpha_t = 1-t,\ \beta_t = t$ (so $\dot\alpha_t = -1,\ \dot\beta_t = 1,\ \alpha_t\dot\beta_t - \beta_t\dot\alpha_t = 1$):
+> This relationship between score function and vector field is true for any choice of the schedulers $\alpha_t$ and $\beta_t$.
+
+**Step 4.** Plug in $\alpha_t = 1-t,\ \beta_t = t$ (so $\dot\alpha_t = -1,\ \dot\beta_t = 1,\ \alpha_t\dot\beta_t - \beta_t\dot\alpha_t = 1$):
+
+<div class="note">
+
 $$
 \nabla_x \log p_t(x) \;=\; \frac{t\, u^\theta_t(x) - x}{1 - t}
 \quad\Longrightarrow\quad
 b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \frac{\sigma_t^2}{2(1-t)}\bigl(t\, u^\theta_t(x) - x\bigr).
 $$
 
+</div>
+
 <!-- > The boxed formula in Step 3 is convention-agnostic — variance-preserving, EDM, and rectified flow all fall out by plugging in their $(\alpha_t, \beta_t)$. Rectified flow's straight-line schedule just happens to give the simplest expression. -->
 
 ---
-class: compact
+class: compact tight
 routeAlias: appendix-closed-form-kl
 ---
 
-# Appendix B: From $\log r_t$ to the closed-form KL
+# Appendix B: The closed-form KL
 
 **Setup.** Two isotropic Gaussian per-step policies with **identical** covariance:
+
+<div class="note">
+
 $$
-\pi_\theta(\cdot \mid X_t) = \mathcal{N}(\mu_\theta,\ \Sigma),
+\pi_\theta(\cdot \mid X_t) = \mathcal{N}(\mu_t^\theta,\ \Sigma),
 \qquad
-\pi_{\text{old}}(\cdot \mid X_t) = \mathcal{N}(\mu_{\text{old}},\ \Sigma),
+\pi_{\text{ref}}(\cdot \mid X_t) = \mathcal{N}(\mu_t^{\text{ref}},\ \Sigma),
 \qquad
 \Sigma = \sigma_t^2 h\, I.
 $$
 
-**Step 1. log-ratio.** The Gaussian log-density is $\log \mathcal{N}(x; \mu, \Sigma) = -\tfrac{1}{2}(x-\mu)^\top \Sigma^{-1}(x-\mu) + \text{const}(\Sigma)$. The $\Sigma$-dependent normalizers are *the same* under $\theta$ and old, so they cancel:
+</div>
+
+**Step 1. log-ratio.** The Gaussian log-density is $\log \mathcal{N}(x; \mu, \Sigma) = -\tfrac{1}{2}(x-\mu)^\top \Sigma^{-1}(x-\mu) + \text{const}(\Sigma)$. The $\Sigma$-dependent normalizers are *the same* under $\theta$ and ref, so they cancel:
+
+<div class="note">
+
 $$
-\log r_t(x) \;=\; \log \pi_\theta(x) - \log \pi_{\text{old}}(x)
-\;=\; \tfrac{1}{2\sigma_t^2 h}\bigl[\lVert x - \mu_{\text{old}} \rVert^2 - \lVert x - \mu_\theta \rVert^2\bigr].
+\log \pi_\theta(X) - \log \pi_{\text{ref}}(X)
+\;=\; \tfrac{1}{2\sigma_t^2 h}\bigl[\lVert X - \mu_t^{\text{ref}} \rVert^2 - \lVert X - \mu_t^\theta \rVert^2\bigr]
 $$
 
-**Step 2. KL by definition.** $\mathrm{KL}(\pi_\theta \,\Vert\, \pi_{\text{old}}) = \mathbb{E}_{X \sim \pi_\theta}\bigl[\log r_t(X)\bigr]$. Parameterise the sample under $\pi_\theta$ as $X = \mu_\theta + \sigma_t \sqrt{h}\, \varepsilon$ with $\varepsilon \sim \mathcal{N}(0, I)$. Then
+</div>
+
+**Step 2. KL by definition.** $\mathrm{KL}(\pi_\theta \,\Vert\, \pi_{\text{ref}}) = \mathbb{E}_{X \sim \pi_\theta}\bigl[\log \pi_\theta(X) - \log \pi_{\text{ref}}(X)\bigr]$. Parametrize $\pi_\theta$ as $X = \mu_t^\theta + \sigma_t \sqrt{h}\, \varepsilon$ with $\varepsilon \sim \mathcal{N}(0, I)$:
+
+<div class="note">
+
 $$
-X - \mu_\theta = \sigma_t \sqrt{h}\, \varepsilon,
+X - \mu_t^\theta = \sigma_t \sqrt{h}\, \varepsilon,
 \qquad
-X - \mu_{\text{old}} = (\mu_\theta - \mu_{\text{old}}) + \sigma_t \sqrt{h}\, \varepsilon.
+X - \mu_t^{\text{ref}} = (\mu_t^\theta - \mu_t^{\text{ref}}) + \sigma_t \sqrt{h}\, \varepsilon
 $$
 
-**Step 3. expand the squared norms.** Using $\lVert a + b \rVert^2 = \lVert a \rVert^2 + 2 a^\top b + \lVert b \rVert^2$:
+</div>
+
+**Step 3. expand the squared norms.** Using $\lVert a + b \rVert^2 = \lVert a \rVert^2 + 2 a^\top b + \lVert b \rVert^2$ (the $\sigma_t^2 h\,\lVert\varepsilon\rVert^2$ terms cancel):
+
+<div class="note">
+
 $$
-\lVert X - \mu_{\text{old}} \rVert^2 - \lVert X - \mu_\theta \rVert^2
-\;=\; \lVert \mu_\theta - \mu_{\text{old}} \rVert^2 \;+\; 2 \sigma_t \sqrt{h}\,(\mu_\theta - \mu_{\text{old}})^\top \varepsilon.
+\lVert X - \mu_t^{\text{ref}} \rVert^2 - \lVert X - \mu_t^\theta \rVert^2
+\;=\; \lVert \mu_t^\theta - \mu_t^{\text{ref}} \rVert^2 \;+\; 2 \sigma_t \sqrt{h}\,(\mu_t^\theta - \mu_t^{\text{ref}})^\top \varepsilon
 $$
-(The $\sigma_t^2 h\,\lVert\varepsilon\rVert^2$ terms cancel between the two squared norms.)
+
+</div>
 
 **Step 4. take the expectation.** $\mathbb{E}[\varepsilon] = 0$, so the cross-term vanishes:
+
+<div class="note">
+
 $$
-\mathbb{E}_{X \sim \pi_\theta}\bigl[\lVert X - \mu_{\text{old}} \rVert^2 - \lVert X - \mu_\theta \rVert^2\bigr]
-\;=\; \lVert \mu_\theta - \mu_{\text{old}} \rVert^2.
+\mathbb{E}_{X \sim \pi_\theta}\bigl[\lVert X - \mu_t^{\text{ref}} \rVert^2 - \lVert X - \mu_t^\theta \rVert^2\bigr]
+\;=\; \lVert \mu_t^\theta - \mu_t^{\text{ref}} \rVert^2
 $$
+
+</div>
 
 Dividing by $2\sigma_t^2 h$ recovers the formula on the main slide:
+
+<div class="note">
+
 $$
-\boxed{\;\mathrm{KL}\!\bigl(\pi_\theta \,\Vert\, \pi_{\text{old}}\bigr) \;=\; \frac{\lVert \mu_\theta - \mu_{\text{old}} \rVert^2}{2\sigma_t^2 h}\;}.
+\boxed{\;\mathrm{KL}\!\bigl(\pi_\theta \,\Vert\, \pi_{\text{ref}}\bigr) \;=\; \frac{\lVert \mu_t^\theta - \mu_t^{\text{ref}} \rVert^2}{2\sigma_t^2 h}\;}
 $$
 
-> This is the same general fact that $\mathrm{KL}(\mathcal{N}(\mu_1, \Sigma) \,\Vert\, \mathcal{N}(\mu_2, \Sigma)) = \tfrac{1}{2}(\mu_1 - \mu_2)^\top \Sigma^{-1}(\mu_1 - \mu_2)$, written out per Euler step.
-
----
-layout: end
-event: EPFL RL Course
-speaker: Speaker Name
-speakerTitle: Lecturer
----
-
-# Thank you!
-
-Questions, comments, or homework debugging. Happy to take them now.
+</div>

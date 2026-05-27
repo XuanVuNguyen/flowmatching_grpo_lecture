@@ -86,7 +86,7 @@ def grpo_train(
             # k3 KL estimator by John Schulman: http://joschu.net/blog/kl-approx.html
             log_r = ref_logp - new_logp
             kl = (torch.exp(log_r) - log_r - 1).mean()
-
+            
             loss = pg_loss + kl_coef * kl
             opt.zero_grad()
             loss.backward()
