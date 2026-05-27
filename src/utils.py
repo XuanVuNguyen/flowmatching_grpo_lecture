@@ -39,7 +39,7 @@ def sample_ode(model, n: int, step_number: int) -> torch.Tensor:
 
 
 def rollout(model, n: int, step_number: int, sigma: float):
-    """Roll out n stochastic trajectories. Returns (x_final, log_prob, trajectory)."""
+    """Roll out n stochastic trajectories with the marginal-preserving SDE"""
     device = next(model.parameters()).device
     dt = 1.0 / step_number
     std = sigma * math.sqrt(dt)
@@ -49,10 +49,15 @@ def rollout(model, n: int, step_number: int, sigma: float):
     traj = [x.clone()]
 
     for step in range(step_number):
-        t = torch.full((n,), step * dt, device=device)
-        mean = x + model(x, t) * dt
+        t_scalar = step * dt
+        t = torch.full((n,), t_scalar, device=device)
+        
+        v = model(x, t)
+        b = score_corrected_drift(v, x, t_scalar, sigma)
+
+        mean = x + b * dt
         x = mean + std * torch.randn_like(x)
-        # log-prob of a 2D isotropic Gaussian
+
         lp = -0.5 * ((x - mean) ** 2).sum(-1) / std ** 2 - 2 * math.log(std * math.sqrt(2 * math.pi))
         log_prob = log_prob + lp
         traj.append(x.clone())
@@ -60,20 +65,23 @@ def rollout(model, n: int, step_number: int, sigma: float):
     return x, log_prob, traj
 
 
-def logprob_of_trajectory(model, traj, step_number, sigma: float):
-    """Recompute log-prob of an existing trajectory under `model`.
+def score_corrected_drift(v: torch.Tensor, x: torch.Tensor, t_scalar: float, sigma: float) -> torch.Tensor:
+    coef = sigma ** 2 / (2.0 * (1.0 - t_scalar))
+    return v + coef * (t_scalar * v - x)
 
-    Used for the importance-sampling ratio and the reference KL.
-    """
+def logprob_of_trajectory(model, traj, step_number, sigma: float):
+    """Recompute log-prob of an existing trajectory under `model`."""
     device = next(model.parameters()).device
     dt = 1.0 / step_number
     std = sigma * math.sqrt(dt)
     log_prob = torch.zeros(traj[0].shape[0], device=device)
 
     for step in range(step_number):
-        t = torch.full((traj[step].shape[0],), step * dt, device=device)
-
-        mean = traj[step] + model(traj[step], t) * dt
+        t_scalar = step * dt
+        t = torch.full((traj[step].shape[0],), t_scalar, device=device)
+        v = model(traj[step], t)
+        b = score_corrected_drift(v, traj[step], t_scalar, sigma)
+        mean = traj[step] + b * dt
 
         lp = -0.5 * ((traj[step + 1] - mean) ** 2).sum(-1) / std ** 2 - 2 * math.log(std * math.sqrt(2 * math.pi))
         log_prob = log_prob + lp
