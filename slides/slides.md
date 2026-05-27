@@ -65,7 +65,7 @@ $$
 
 **Why learn a velocity instead of the map itself?** We could try to learn the noise-to-data map directly, but it's globally complex. One function would have to encode the entire transformation. Learning a vector field instead means the network answers only a *local* question: where to move from *this* point at *this* time. The global transformation then emerges by integrating many easy local decisions.
 
-<img :src="'/figures/noise_to_data.gif?v=2'" class="mx-auto block" style="height: 140px; width: auto;" />
+<img :src="'./figures/noise_to_data.gif?v=2'" class="mx-auto block" style="height: 140px; width: auto;" />
 
 To make this precise, we need to talk about how points *move* in space over time. The next few slides define **ODEs, vector fields, flows**, then we return to flow matching itself.
 
@@ -92,7 +92,7 @@ A **solution**, called a **trajectory**, is a differentiable function $X : I \to
 
 **Why first-order?** In flow matching we specify velocities directly, that is what the neural network outputs, so first-order is the right level of description. We take $I = [0, 1]$ and interpret $t$ as time
 
-<img :src="'/figures/ode_trajectory.gif'" class="mx-auto block" style="height: 130px; width: auto;" />
+<img :src="'./figures/ode_trajectory.gif'" class="mx-auto block" style="height: 130px; width: auto;" />
 
 <div class="example">
 
@@ -126,7 +126,7 @@ Every (sufficiently regular) vector field defines an **ODE**. Paired with an ini
 </div>
 <div class="vf-right">
 
-<img :src="'/figures/vector_field.gif?v=2'" style="height: 240px; width: auto;" />
+<img :src="'./figures/vector_field.gif?v=2'" style="height: 240px; width: auto;" />
 
 </div>
 </div>
@@ -166,7 +166,7 @@ The flow transports distributions, not just points: if $X_0 \sim p_0$ then $X_t 
 
 ::right::
 
-<img :src="'/figures/flow.gif'" class="mx-auto block" style="width: 100%; height: auto; max-height: 360px;" />
+<img :src="'./figures/flow.gif'" class="mx-auto block" style="width: 100%; height: auto; max-height: 360px;" />
 
 <p style="text-align: center; font-size: 0.8rem; color: #6E6967; margin-top: 0.4em;">
 <span style="color: #1f77b4; font-weight: 700;">■</span> flow Ψ<sub>t</sub> (warped grid) &nbsp;&nbsp;
@@ -185,7 +185,7 @@ In **flow matching** we re-use the machinery above to transport noise into data 
 - The **vector field** $u_t$ is what we learn: a neural network trained to point toward data
 - The **flow** $\Psi_t$ carries *every* noise point to a data point at once; it is the generative map
 
-<img :src="'/figures/noise_to_data_vector.gif'" class="mx-auto block" style="height: 300px; width: auto;" />
+<img :src="'./figures/noise_to_data_vector.gif'" class="mx-auto block" style="height: 300px; width: auto;" />
 
 ---
 class: compact
@@ -204,7 +204,7 @@ $$
 
 where $N \in \mathbb{N}$ is the number of simulation steps and $h = \tfrac{1}{N}$ is the step size.
 
-<img :src="'/figures/euler_sampling.gif'" class="mx-auto block" style="height: 280px; width: auto;" />
+<img :src="'./figures/euler_sampling.gif'" class="mx-auto block" style="height: 280px; width: auto;" />
 
 **Key property for RL**: randomness comes only from the initial noise $x_0 \sim p_0$, every Euler step is deterministic. This will be a problem when we want to *explore*. We'll fix it in the GRPO setup by injecting stochasticity as each step
 
@@ -313,7 +313,7 @@ class: compact
 
 <!-- Same drift $u_t$, same starting point, same step size. The only thing that changes across panels is the noise scale $\sigma$ injected at each Euler step. -->
 
-<img :src="'/figures/ode_vs_sde.gif'" class="mx-auto block" style="height: 360px; width: auto;" />
+<img :src="'./figures/ode_vs_sde.gif'" class="mx-auto block" style="height: 360px; width: auto;" />
 
 <!-- - **Top-left ($\sigma = 0$, ODE):** one trajectory — the rollout is a deterministic function of $X_0$, so a group of rollouts from the same noise would all be identical.
 - **Other panels (SDE):** four trajectories from the *same* $X_0$ diverge because each Euler step adds an independent $\sigma\sqrt{h}\,\varepsilon_t$. Increasing $\sigma$ widens the cloud — this is the exploration knob GRPO needs.
@@ -529,7 +529,7 @@ class: compact tight
 routeAlias: appendix-rectified-flow
 ---
 
-# Appendix A: Rectified-flow drift $b^\theta_t$
+# Appendix A: The Flow Drift $b^\theta_t$
 
 **Recall.** $b^\theta_t(x) = u^\theta_t(x) + \tfrac{\sigma_t^2}{2}\, \nabla_x \log p_t(x)$.
 
@@ -579,7 +579,7 @@ Steps 1 and 2 give us $u_t$ and $\nabla_x \log p_t$ each as an affine function o
 class: compact tight
 ---
 
-# Appendix A (cont.): Rectified-flow drift $b^\theta_t$
+# Appendix A (cont.): The Flow Drift $b^\theta_t$$
 
 **Step 3.** Solving $(\star\star)$ for $\mathbb{E}[X_1|X_t]$ and substituting into $(\star)$ gives a relation for *any* Gaussian mixture path:
 
@@ -604,8 +604,6 @@ b^\theta_t(x) \;=\; u^\theta_t(x) \;+\; \frac{\sigma_t^2}{2(1-t)}\bigl(t\, u^\th
 $$
 
 </div>
-
-<!-- > The boxed formula in Step 3 is convention-agnostic — variance-preserving, EDM, and rectified flow all fall out by plugging in their $(\alpha_t, \beta_t)$. Rectified flow's straight-line schedule just happens to give the simplest expression. -->
 
 ---
 class: compact tight
