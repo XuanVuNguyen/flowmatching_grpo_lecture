@@ -65,7 +65,6 @@ def grpo_train(
         with torch.no_grad():
             x_final, old_logp, traj = utils.rollout(model, n, step_number=step_number, sigma=sigma)
             r = reward_func(x_final)
-            ref_logp = utils.logprob_of_trajectory(ref_model, traj, step_number=step_number, sigma=sigma)
 
         # advantage
         r_grp = r.view(n_groups, group_size)
@@ -74,7 +73,6 @@ def grpo_train(
 
         traj_det = [s.detach() for s in traj]
         old_logp = old_logp.detach()
-        ref_logp = ref_logp.detach()
 
         for _ in range(inner_epochs):
             new_logp = utils.logprob_of_trajectory(model, traj_det, step_number=step_number, sigma=sigma)
@@ -83,9 +81,12 @@ def grpo_train(
             clipped = torch.clamp(ratio, 1 - clip_ratio, 1 + clip_ratio) * adv
             pg_loss = -torch.min(unclipped, clipped).mean()
 
-            # k3 KL estimator by John Schulman: http://joschu.net/blog/kl-approx.html
-            log_r = ref_logp - new_logp
-            kl = (torch.exp(log_r) - log_r - 1).mean()
+            # Closed-form Gaussian KL: per-step Gaussians with identical covariance
+            # under theta and ref => KL collapses to a scaled L2 distance of means,
+            # i.e. sum_k (h * C_{t_k}^2 / (2 sigma^2)) * ||v_theta - v_ref||^2.
+            kl = utils.kl_to_ref_gaussian(
+                model, ref_model, traj_det, step_number=step_number, sigma=sigma
+            ).mean()
 
             loss = pg_loss + kl_coef * kl
             opt.zero_grad()
