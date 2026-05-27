@@ -1,17 +1,16 @@
 r"""Animate the flow $\Psi_t : \mathbb{R}^2 \to \mathbb{R}^2$.
 
 A regular square grid (blue) is transported by a velocity field $u_t$
-(yellow arrows). The grid warps smoothly as time advances — the flow is
-a diffeomorphism of space. Also produces a 3-snapshot static figure at
-$t = 0,\ 0.5,\ 1.0$.
+(yellow arrows). The grid warps smoothly as time advances. Also produces a
+3-snapshot static figure at $t = 0,\ 0.5,\ 1.0$.
 """
-
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.animation import FuncAnimation
 from scipy.integrate import solve_ivp
+
+from _common import BLUE, FIGURES_DIR, YELLOW, save_anim, save_png, time_text
 
 
 T_FINAL = 1.0
@@ -20,9 +19,6 @@ GRID_N = 11
 GRID_RANGE = (-1.0, 1.0)
 ARROW_N = 13
 PLOT_RANGE = (-1.8, 1.8)
-
-GRID_COLOR = "#1f77b4"
-ARROW_COLOR = "#f4c20d"
 
 
 def velocity(t: float, x: np.ndarray) -> np.ndarray:
@@ -61,15 +57,13 @@ def draw_arrows(ax, AX, AY, arrow_pts, t_val):
     V = velocity(t_val, arrow_pts)
     return ax.quiver(
         AX, AY, V[0].reshape(AX.shape), V[1].reshape(AX.shape),
-        color=ARROW_COLOR, scale=22, width=0.005,
+        color=YELLOW, scale=22, width=0.005,
         headwidth=3.5, headlength=4.5, headaxislength=4.0,
         edgecolor="black", linewidth=0.3, alpha=0.85, zorder=1,
     )
 
 
-def main(out_dir: Path):
-    out_dir.mkdir(parents=True, exist_ok=True)
-
+def main():
     t = np.linspace(0.0, T_FINAL, N_FRAMES)
     paths = integrate_grid(t)
     AX, AY = arrow_grid()
@@ -85,13 +79,9 @@ def main(out_dir: Path):
     ax.grid(alpha=0.12)
 
     quiv = draw_arrows(ax, AX, AY, arrow_pts, 0.0)
-    h_lines = [ax.plot([], [], color=GRID_COLOR, lw=1.4, zorder=3)[0] for _ in range(GRID_N)]
-    v_lines = [ax.plot([], [], color=GRID_COLOR, lw=1.4, zorder=3)[0] for _ in range(GRID_N)]
-
-    time_text = ax.text(
-        0.02, 0.96, "", transform=ax.transAxes, fontsize=11,
-        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.9, "edgecolor": "gray"},
-    )
+    h_lines = [ax.plot([], [], color=BLUE, lw=1.4, zorder=3)[0] for _ in range(GRID_N)]
+    v_lines = [ax.plot([], [], color=BLUE, lw=1.4, zorder=3)[0] for _ in range(GRID_N)]
+    t_text = time_text(ax)
 
     def update(frame: int):
         pos = paths[frame]
@@ -101,17 +91,12 @@ def main(out_dir: Path):
             vl.set_data(pos[0, :, c], pos[1, :, c])
         V_t = velocity(t[frame], arrow_pts)
         quiv.set_UVC(V_t[0].reshape(AX.shape), V_t[1].reshape(AX.shape))
-        time_text.set_text(f"$t = {t[frame]:.2f}$")
-        return [*h_lines, *v_lines, quiv, time_text]
+        t_text.set_text(f"$t = {t[frame]:.2f}$")
+        return [*h_lines, *v_lines, quiv, t_text]
 
-    anim = FuncAnimation(
-        fig, update, frames=N_FRAMES, interval=33, blit=False, repeat=True,
-    )
-
+    anim = FuncAnimation(fig, update, frames=N_FRAMES, interval=33, blit=False, repeat=True)
     fig.tight_layout()
-    out_gif = out_dir / "flow.gif"
-    anim.save(out_gif, writer=PillowWriter(fps=30))
-    print(f"saved {out_gif}")
+    save_anim(anim, FIGURES_DIR, "flow")
     plt.close(fig)
 
     # 3-snapshot static figure: t = 0, 0.5, 1.0
@@ -123,9 +108,9 @@ def main(out_dir: Path):
         draw_arrows(ax2, AX, AY, arrow_pts, t_snap)
         pos = snap_paths[i]
         for r in range(GRID_N):
-            ax2.plot(pos[0, r, :], pos[1, r, :], color=GRID_COLOR, lw=1.4, zorder=3)
+            ax2.plot(pos[0, r, :], pos[1, r, :], color=BLUE, lw=1.4, zorder=3)
         for c in range(GRID_N):
-            ax2.plot(pos[0, :, c], pos[1, :, c], color=GRID_COLOR, lw=1.4, zorder=3)
+            ax2.plot(pos[0, :, c], pos[1, :, c], color=BLUE, lw=1.4, zorder=3)
         ax2.set_xlim(*PLOT_RANGE)
         ax2.set_ylim(*PLOT_RANGE)
         ax2.set_aspect("equal")
@@ -133,10 +118,8 @@ def main(out_dir: Path):
         ax2.grid(alpha=0.12)
     fig2.suptitle("Flow")
     fig2.tight_layout()
-    out_png = out_dir / "flow.png"
-    fig2.savefig(out_png, dpi=160, bbox_inches="tight")
-    print(f"saved {out_png}")
+    save_png(fig2, FIGURES_DIR, "flow")
 
 
 if __name__ == "__main__":
-    main(Path(__file__).resolve().parent.parent / "slides" / "public" / "figures")
+    main()

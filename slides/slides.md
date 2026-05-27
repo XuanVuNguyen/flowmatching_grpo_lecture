@@ -346,13 +346,13 @@ class: compact
 
 # GRPO with Gaussian Policies $\Rightarrow$ Closed-Form KL
 
-Because every step's policy is Gaussian with **fixed** covariance $\sigma^2 h\, I$, only the *mean* depends on $\theta$. Write $\mu_\theta = X_t + h\, b^\theta_t(X_t)$ and $\mu_{\text{old}} = X_t + h\, b^{\text{old}}_t(X_t)$.
+Each Euler step's policy is Gaussian with covariance $\sigma_t^2 h\, I$ **that does not depend on $\theta$** (the schedule $\sigma_t$ is chosen, not learned). Only the *mean* moves with $\theta$. Write $\mu_\theta = X_t + h\, b^\theta_t(X_t)$ and $\mu_{\text{old}} = X_t + h\, b^{\text{old}}_t(X_t)$.
 
 The per-step log-ratio collapses to a difference of squared distances:
 
 $$
 \log r_t \;=\; \log\frac{\pi_\theta(X_{t+h}\mid X_t)}{\pi_{\text{old}}(X_{t+h}\mid X_t)}
-\;=\; \frac{\lVert X_{t+h} - \mu_{\text{old}} \rVert^2 \;-\; \lVert X_{t+h} - \mu_\theta \rVert^2}{2\sigma^2 h}
+\;=\; \frac{\lVert X_{t+h} - \mu_{\text{old}} \rVert^2 \;-\; \lVert X_{t+h} - \mu_\theta \rVert^2}{2\sigma_t^2 h}
 $$
 
 Taking the expectation $\mathrm{KL} = \mathbb{E}_{X \sim \pi_\theta}[\log r_t(X)]$ yields the **closed form** ([see Appendix B](/appendix-closed-form-kl)):
@@ -372,24 +372,32 @@ $$
 C_t \;\triangleq\; 1 + \frac{t\,\sigma_t^2}{2(1-t)}.
 $$
 
-So the KL collapses to a scalar-weighted squared residual of the **learned velocity** alone:
+So the per-step KL (at step time $t$) reduces to a **time-dependent** weight times the squared residual of the learned velocity:
 
 $$
-\mathrm{KL}\!\bigl(\pi_\theta\,\Vert\,\pi_{\text{old}}\bigr)
-\;=\; \frac{h\, C_t^2}{2\sigma_t^2}\,\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t) \bigr\rVert^2.
+\mathrm{KL}\!\bigl(\pi_\theta(\cdot \mid X_t)\,\Vert\,\pi_{\text{old}}(\cdot \mid X_t)\bigr)
+\;=\; \frac{h\, C_t^2}{2\sigma_t^2}\,\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t) \bigr\rVert^2,
 $$
 
-The full GRPO objective summed over the $N$ Euler steps then depends only on $u^\theta$ (through $\mu_\theta$ inside $r_t$ and through the residual above):
+where the weight $h\, C_t^2 / (2\sigma_t^2)$ varies with $t$ via *both* $\sigma_t$ and $C_t = 1 + t\sigma_t^2/[2(1-t)]$.
+
+--- 
+class: compact middle
+---
+
+# GRPO with Gaussian Policies $\Rightarrow$ Closed-Form KL (cont.)
+
+Summing over the Euler steps $k = 0, \ldots, N-1$ with $t_k = k h$ (and noting that $\sigma_{t_k}$ and $C_{t_k}$ each depend on $k$), the GRPO objective depends only on $u^\theta$:
 
 $$
 \boxed{\;
 \mathcal{L}_{\text{GRPO}}
-= \mathbb{E}\Bigl[\sum_{t}\min\bigl(r_t \hat{A},\, \operatorname{clip}(r_t, 1{-}\epsilon, 1{+}\epsilon)\hat{A}\bigr)\Bigr]
-\;-\;\beta \sum_{t}\frac{h\, C_t^2}{2\sigma_t^2}\bigl\lVert u^\theta_t(X_t) - u^{\text{old}}_t(X_t)\bigr\rVert^2
+= \mathbb{E}\Bigl[\sum_{k}\min\bigl(r_{t_k} \hat{A},\, \operatorname{clip}(r_{t_k}, 1{-}\epsilon, 1{+}\epsilon)\hat{A}\bigr)\Bigr]
+\;-\;\beta \sum_{k}\frac{h\, C_{t_k}^2}{2\sigma_{t_k}^2}\bigl\lVert u^\theta_{t_k}(X_{t_k}) - u^{\text{old}}_{t_k}(X_{t_k})\bigr\rVert^2
 \;}
 $$
 
-> Closed-form KL is the practical benefit of staying Gaussian: low variance, no Monte-Carlo simulation, and gradients flow directly into the velocity network $u^\theta_t$.
+<!-- > Closed-form KL is the practical benefit of staying Gaussian: low variance, no Monte-Carlo simulation, and gradients flow directly into the velocity network $u^\theta_t$. -->
 
 ---
 class: compact

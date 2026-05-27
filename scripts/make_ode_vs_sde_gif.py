@@ -11,11 +11,11 @@ Output: slides/public/figures/ode_vs_sde.gif
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation, PillowWriter
+import numpy as np
+from matplotlib.animation import FuncAnimation
+
+from _common import FIGURES_DIR, save_anim
 
 
 T = 1.0
@@ -53,10 +53,6 @@ def main() -> None:
             for k, s in enumerate(SIGMAS)]
 
     fig, axes = plt.subplots(2, 2, figsize=(8.5, 5.6), sharex=True, sharey=True)
-    # fig.suptitle(
-    #     "ODE vs SDE: per-step Gaussian noise gives trajectory diversity",
-    #     fontsize=11,
-    # )
 
     panels = [
         (axes[0, 0], "ODE  (σ = 0)",          ode,     "#1f77b4"),
@@ -77,12 +73,11 @@ def main() -> None:
         ax.grid(alpha=0.25)
         ax.set_xlabel("t")
         ax.set_ylabel(r"$X_t$")
-        # Faint reference ODE in every SDE panel so the noise contribution is visible.
         if traj is not ode:
             ax.plot(T_GRID, ode[0], color="#888888", lw=1.0,
                     ls="--", alpha=0.6, label="ODE")
         sub = []
-        for j in range(traj.shape[0]):
+        for _ in range(traj.shape[0]):
             (ln,) = ax.plot([], [], color=color, alpha=0.85, lw=1.6)
             sub.append(ln)
         line_groups.append(sub)
@@ -107,20 +102,9 @@ def main() -> None:
                 ln.set_data(T_GRID[: i + 1], traj[j, : i + 1])
         return [ln for sub in line_groups for ln in sub]
 
-    anim = FuncAnimation(
-        fig,
-        update,
-        frames=frame_indices,
-        init_func=init,
-        blit=True,
-        interval=50,
-    )
-
-    out_path = Path(__file__).resolve().parent.parent \
-        / "slides" / "public" / "figures" / "ode_vs_sde.gif"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    anim.save(out_path, writer=PillowWriter(fps=24))
-    print(f"Saved {out_path}")
+    anim = FuncAnimation(fig, update, frames=frame_indices,
+                         init_func=init, blit=True, interval=50)
+    save_anim(anim, FIGURES_DIR, "ode_vs_sde", fps=24)
 
 
 if __name__ == "__main__":

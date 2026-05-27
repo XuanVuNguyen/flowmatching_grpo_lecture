@@ -1,11 +1,11 @@
 <script setup lang="ts">
-defineProps<{ chapter?: string | number }>()
+defineProps<{ part?: string | number }>()
 </script>
 
 <template>
   <div class="slidev-layout epfl-section">
     <img src="/epfl/logo.svg" class="epfl-chrome-logo" alt="EPFL" />
-    <div v-if="chapter !== undefined" class="section-eyebrow">Chapter {{ chapter }}</div>
+    <div v-if="part !== undefined" class="section-eyebrow">Part {{ part }}</div>
     <slot />
     <div class="section-rule" />
   </div>

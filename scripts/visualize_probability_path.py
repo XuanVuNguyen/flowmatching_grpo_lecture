@@ -7,12 +7,12 @@ morphs from the Gaussian to the smiley. One particular sample is drawn
 as a small cat, following its own trajectory.
 """
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Circle, Polygon
+
+from _common import BLUE, FIGURES_DIR, GRAY_CONTOUR, save_anim, save_png, time_text
 
 
 T_FINAL = 1.0
@@ -21,8 +21,6 @@ N_SAMPLES = 900
 X_LIM = (-2.5, 2.5)
 Y_LIM = (-2.0, 2.0)
 
-SAMPLE_COLOR = "#1f77b4"
-CONTOUR_COLOR = "#7f7f7f"
 CAT_COLOR = "#f39c12"
 
 
@@ -97,13 +95,11 @@ def gaussian_contour(ax, sigma: float = 0.55):
     return ax.contour(
         GX, GY, pdf,
         levels=[0.05, 0.2, 0.5, 0.85],
-        colors=CONTOUR_COLOR, linewidths=0.7, alpha=0.45, zorder=1,
+        colors=GRAY_CONTOUR, linewidths=0.7, alpha=0.45, zorder=1,
     )
 
 
-def main(out_dir: Path):
-    out_dir.mkdir(parents=True, exist_ok=True)
-
+def main():
     x_init = sample_gaussian(N_SAMPLES)
     x_data = sample_smiley(N_SAMPLES)
 
@@ -113,8 +109,6 @@ def main(out_dir: Path):
     x_init = x_init[np.argsort(angle_i)]
     x_data = x_data[np.argsort(angle_d)]
 
-    # The cat is its own independent trajectory — starts near the centre of
-    # p_init and lands on the right eye of the smiley.
     cat_x_init = np.array([0.25, -0.15])
     cat_x_data = np.array([0.55, 0.55])
 
@@ -131,16 +125,12 @@ def main(out_dir: Path):
 
     gaussian_contour(ax)
 
-    x0 = x_init.copy()
-    scatter = ax.scatter(x0[:, 0], x0[:, 1], s=9, c=SAMPLE_COLOR, alpha=0.55, zorder=2)
+    scatter = ax.scatter(x_init[:, 0], x_init[:, 1], s=9, c=BLUE, alpha=0.55, zorder=2)
 
     cat = Cat(ax, size=0.28)
     cat.move_to(*cat_x_init)
 
-    time_text = ax.text(
-        0.02, 0.96, "", transform=ax.transAxes, fontsize=11,
-        bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.9, "edgecolor": "gray"},
-    )
+    t_text = time_text(ax)
 
     def update(frame: int):
         t_now = t[frame]
@@ -148,26 +138,21 @@ def main(out_dir: Path):
         scatter.set_offsets(x_t)
         cat_pos = (1.0 - t_now) * cat_x_init + t_now * cat_x_data
         cat.move_to(*cat_pos)
-        time_text.set_text(f"$t = {t_now:.2f}$")
-        return [scatter, time_text, *cat.artists()]
+        t_text.set_text(f"$t = {t_now:.2f}$")
+        return [scatter, t_text, *cat.artists()]
 
-    anim = FuncAnimation(
-        fig, update, frames=N_FRAMES, interval=33, blit=False, repeat=True,
-    )
-
+    anim = FuncAnimation(fig, update, frames=N_FRAMES, interval=33, blit=False, repeat=True)
     fig.tight_layout()
-    out_gif = out_dir / "probability_path.gif"
-    anim.save(out_gif, writer=PillowWriter(fps=30))
-    print(f"saved {out_gif}")
+    save_anim(anim, FIGURES_DIR, "probability_path")
     plt.close(fig)
 
     # Static 3-snapshot figure: t = 0, 0.5, 1.0
     snap_times = np.array([0.0, 0.5, 1.0])
     fig2, axes = plt.subplots(1, 3, figsize=(12, 4.5))
-    for i, (t_snap, ax2) in enumerate(zip(snap_times, axes)):
+    for t_snap, ax2 in zip(snap_times, axes):
         gaussian_contour(ax2)
         x_t = (1.0 - t_snap) * x_init + t_snap * x_data
-        ax2.scatter(x_t[:, 0], x_t[:, 1], s=9, c=SAMPLE_COLOR, alpha=0.55, zorder=2)
+        ax2.scatter(x_t[:, 0], x_t[:, 1], s=9, c=BLUE, alpha=0.55, zorder=2)
         cat_snap = Cat(ax2, size=0.28)
         cat_pos = (1.0 - t_snap) * cat_x_init + t_snap * cat_x_data
         cat_snap.move_to(*cat_pos)
@@ -178,10 +163,8 @@ def main(out_dir: Path):
         ax2.grid(alpha=0.12)
     fig2.suptitle("Probability path: $p_{\\text{init}} \\to p_{\\text{data}}$")
     fig2.tight_layout()
-    out_png = out_dir / "probability_path.png"
-    fig2.savefig(out_png, dpi=160, bbox_inches="tight")
-    print(f"saved {out_png}")
+    save_png(fig2, FIGURES_DIR, "probability_path")
 
 
 if __name__ == "__main__":
-    main(Path(__file__).resolve().parent.parent / "slides" / "public" / "figures")
+    main()
