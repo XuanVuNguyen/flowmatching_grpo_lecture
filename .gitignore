@@ -33,4 +33,5 @@ slides/*.pptx
 
 fm_grpo.egg-info/
 
+__pycache__
 assets/
