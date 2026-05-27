@@ -40,7 +40,7 @@ layout: outline
 5. Brownian motion & SDEs
 6. Putting the algorithm together
 7. Ablations: KL vs no-KL
-8. Future work & homework
+8. Hands-on notebook
 
 ---
 layout: section
@@ -227,9 +227,9 @@ We need paths connecting noise $x_0 \sim p_0$ to data $x_1 \sim p_{\text{data}}$
 
 </div>
 
-Each point $x_t$ has a well-defined velocity $u_t(x_t \mid x_0, x_1) = \dot{\alpha}_t\, x_0 + \dot{\beta}_t\, x_1$. For the linear schedule, $\dot{\alpha}_t = -1$ and $\dot{\beta}_t = 1$, so this simplifies to $x_1 - x_0$ — the displacement vector from noise to data.
+Each point $x_t$ has a well-defined velocity $u_t(x_t \mid x_0, x_1) = \dot{\alpha}_t\, x_0 + \dot{\beta}_t\, x_1$. For the linear schedule, $\dot{\alpha}_t = -1$ and $\dot{\beta}_t = 1$, so this simplifies to $x_1 - x_0$.
 
-**For the rest of this lecture we use linear interpolation unless stated otherwise.**
+**For the rest of this lecture we use linear interpolation**
 
 To train, sample $x_0 \sim p_0,\ x_1 \sim p_{\text{data}},\ t \sim \mathcal{U}[0, 1]$, form $x_t$, and regress the network's predicted velocity onto the path velocity:
 
@@ -241,7 +241,7 @@ $$
 
 </div>
 
-**Intuition**: Each example sees only one noise–data pair, but in expectation the network learns the *marginal* velocity at $x_t$ — the average direction transporting noise into data. This gives a good generative model, but the target $x_1 - x_0$ knows nothing about reward or preference. **That's where GRPO comes in.**
+**Intuition**: Each example sees only one noise–data pair, but in expectation the network learns the *marginal* velocity at $x_t$ — the average direction transporting noise into data. This gives a good generative model, but the target $x_1 - x_0$ knows nothing about reward or preference
 
 <div class="terminology">
 
@@ -270,40 +270,35 @@ $$
 ---
 class: compact
 ---
+# Notebook to Practice
 
-# Why ODE is the wrong substrate for GRPO
+<div class="practice-steps">
 
-```ts {monaco}
-// Sampling an ODE is deterministic given x(0).
-// That kills exploration: every rollout from the same noise is identical.
-const x0 = sampleNoise()
-const x1 = odeSolver(velocityField, x0)
-```
+<div class="practice-step">
+<div class="step-num">1</div>
+<div class="step-body">
+<div class="step-title">Build the pipeline, end to end</div>
+Train flow matching on a 2D checkerboard distribution, swap the ODE for an SDE, and let GRPO steer it with a predefined reward
+</div>
+</div>
 
-We need **stochastic** trajectories so the group of rollouts has variance to
-score against. Enter SDEs.
+<div class="practice-step">
+<div class="step-num">2</div>
+<div class="step-body">
+<div class="step-title">Design your custom reward</div>
+Smooth, sparse, multi-modal, repulsive. See how reward shapes the policy and find out what the policy can (and can't) learn
+</div>
+</div>
 
----
-layout: full-image
-image: /epfl/campus.jpeg
----
+<div class="practice-step">
+<div class="step-num">3</div>
+<div class="step-body">
+<div class="step-title">Sweep across KL coefficients</div>
+Watch the trade-off between maximizing the reward and staying close to the prior
+</div>
+</div>
 
-# Brownian motion & SDEs
-
-$$
-dx_t = b(x_t, t)\, dt + \sigma(x_t, t)\, dW_t
-$$
-
-Use the `full-image` layout for visually dominant slides: diagrams, hero
-images, single equations.
-
----
-layout: section
-chapter: 3
----
-
-# Implementation & results
-
+</div>
 ---
 class: compact
 ---

@@ -418,3 +418,38 @@
   padding: 6px 10px;
   border-bottom: 1px solid var(--epfl-rule);
 }
+
+/* Notebook-to-practice step cards */
+.slidev-layout .practice-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 1.4em;
+}
+.slidev-layout .practice-step {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+  padding: 16px 20px;
+  background: var(--epfl-bg-soft);
+  border-radius: 10px;
+}
+.slidev-layout .practice-step .step-num {
+  flex: 0 0 auto;
+  align-self: center;
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--epfl-text-soft);
+  min-width: 1.6ch;
+  text-align: center;
+}
+.slidev-layout .practice-step .step-body {
+  flex: 1;
+  color: var(--epfl-text);
+}
+.slidev-layout .practice-step .step-title {
+  font-weight: 700;
+  color: var(--epfl-text);
+  margin-bottom: 4px;
+  font-size: 1.05rem;
+}
