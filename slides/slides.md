@@ -162,7 +162,9 @@ $$
 
 For any initial condition $X_0 = x_0$, the corresponding trajectory is recovered by fixing $x_0$: $X_t = \Psi_t(x_0)$. While a trajectory is a single curve, the flow tracks all of them at once
 
-The flow transports distributions, not just points: if $X_0 \sim p_0$ then $X_t = \Psi_t(X_0)$ has distribution $p_t$. So, a vector field $u_t$ defines an entire path $\{p_t\}_{t \in [0, 1]}$ interpolating between $p_0$ and $p_1$
+The flow transports distributions, not just points:
+
+If $X_0 \sim p_0$ then $X_t = \Psi_t(X_0)$ has distribution $p_t$. So, a vector field $u_t$ defines an entire path $\{p_t\}_{t \in [0, 1]}$ interpolating between $p_0$ and $p_1$
 
 ::right::
 
