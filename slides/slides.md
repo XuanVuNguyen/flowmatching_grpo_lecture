@@ -77,7 +77,7 @@ class: compact
 
 <div class="definition">
 
-An **ODE** is an equation relating an unknown function $X : I \to \mathbb{R}^d$ to its derivatives, where $I \subseteq \mathbb{R}$ is an interval. A **first-order ODE** has the form
+An **ODE** is an equation connecting an unknown function $X : I \to \mathbb{R}^d$ to its derivatives, where $I \subseteq \mathbb{R}$ is an interval. A **first-order ODE** has the form
 $$
 \frac{dX_t}{dt} = f(X_t,\, t), \qquad f : \mathbb{R}^d \times I \to \mathbb{R}^d.
 $$
@@ -90,7 +90,7 @@ A **solution**, called a **trajectory**, is a differentiable function $X : I \to
 
 </div>
 
-**Why first-order?** In flow matching we specify velocities directly, that is what the neural network outputs, so first-order is the right level of description. We take $I = [0, 1]$ and interpret $t$ as time
+**Why first-order?** In flow matching we specify velocities directly; that is what the neural network outputs, so first-order is the right level of description. We take $I = [0, 1]$ and interpret $t$ as time
 
 <img :src="'./figures/ode_trajectory.gif'" class="mx-auto block" style="height: 130px; width: auto;" />
 
@@ -118,7 +118,9 @@ $$
 <div class="vf-row">
 <div class="vf-left">
 
-Every (sufficiently regular) vector field defines an **ODE**. Paired with an initial condition, it constitutes an **initial value problem (IVP)**:
+Every (sufficiently regular) vector field defines an **ODE**
+
+Paired with an initial condition, it constitutes an **initial value problem (IVP)**:
 
 - $\dot{X}_t = u_t(X_t)$: the trajectory follows the field
 - $X_0 = x_0$: the trajectory starts at an initial point
@@ -148,23 +150,24 @@ class: compact
 
 <div class="definition">
 
-The **flow** $\Psi_t(x_0)$ is the position, at time $t$, of the trajectory starting from $x_0$:
+A flow is a one-parameter family of functions $\{\Psi_t\}_{t \in [0, 1]}$, where each $\Psi_t: \mathbb{R}^d \to \mathbb{R}^d$ maps a starting point to its position at time $t$
+
+Equivalently, the family folds into a single combined map:
 $$
-\Psi : \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d.
+\Psi: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d, \qquad (x_0, t) \to \Psi_t(x_0)
 $$
 
-It is itself a solution of the ODE, one curve for every starting point:
+The flow is defined by an ODE: for every point $x_0$:
 $$
-\tfrac{d}{dt} \Psi_t(x_0) = u_t(\Psi_t(x_0)), \quad \Psi_0(x_0) = x_0.
+\frac{d}{dt} \Psi_t(x_0) = u_t(\Psi_t(x_0)), \qquad \Psi_0(x_0)=x_0
 $$
-
 </div>
 
-For any initial condition $X_0 = x_0$, the corresponding trajectory is recovered by fixing $x_0$: $X_t = \Psi_t(x_0)$. While a trajectory is a single curve, the flow tracks all of them at once
+So the flow is not a single solution but all of them at once, one trajectory per each starting point. Fixing $x_0$ recovers an initial trajectory, $X_t = \Psi_t(x_0)$ with $X_0 = x_0$
 
-The flow transports distributions, not just points:
+The flow also transports distributions, not just points:
 
-If $X_0 \sim p_0$ then $X_t = \Psi_t(X_0)$ has distribution $p_t$. So, a vector field $u_t$ defines an entire path $\{p_t\}_{t \in [0, 1]}$ interpolating between $p_0$ and $p_1$
+If $X_0 \sim p_0$ then $X_t = \Psi_t(X_0)$ has distribution $p_t$. So, a vector field $u_t$ defines an entire path of distributions $\{p_t\}_{t \in [0, 1]}$ interpolating between $p_0$ and $p_1$
 
 ::right::
 
